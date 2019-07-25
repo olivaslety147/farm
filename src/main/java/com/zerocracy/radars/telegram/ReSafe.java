@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,8 +19,8 @@ package com.zerocracy.radars.telegram;
 import com.zerocracy.Farm;
 import com.zerocracy.SoftException;
 import com.zerocracy.farm.props.Props;
+import com.zerocracy.sentry.SafeSentry;
 import com.zerocracy.tools.TxtUnrecoverableError;
-import io.sentry.Sentry;
 import java.io.IOException;
 import org.cactoos.func.FuncOf;
 import org.cactoos.func.FuncWithFallback;
@@ -32,10 +32,7 @@ import org.telegram.telegrambots.api.objects.Update;
 /**
  * Safe Telegram reaction.
  *
- * @author Kirill (g4s8.public@gmail.com)
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.17
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class ReSafe implements Reaction {
@@ -91,7 +88,7 @@ public final class ReSafe implements Reaction {
                                     ).asString()
                                 )
                         );
-                        Sentry.capture(throwable);
+                        new SafeSentry(farm).capture(throwable);
                         throw new IOException(throwable);
                     }
                 )

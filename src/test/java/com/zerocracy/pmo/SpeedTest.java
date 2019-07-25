@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,15 +18,14 @@ package com.zerocracy.pmo;
 
 import com.zerocracy.farm.fake.FkFarm;
 import com.zerocracy.farm.fake.FkProject;
+import java.time.Instant;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 
 /**
  * Test case for {@link Speed}.
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.17
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  */
 public final class SpeedTest {
@@ -36,8 +35,8 @@ public final class SpeedTest {
         final FkProject project = new FkProject();
         final FkFarm farm = new FkFarm(project);
         final Speed speed = new Speed(farm, "g4s8").bootstrap();
-        speed.add("TST000001", "gh:test/test#1", 2L);
-        speed.add("TST000002", "gh:test/test#2", 1L);
+        speed.add("TST000001", "gh:test/test#1", 2L, Instant.now());
+        speed.add("TST000002", "gh:test/test#2", 1L, Instant.now());
         MatcherAssert.assertThat(speed.jobs(), Matchers.iterableWithSize(2));
     }
 
@@ -46,10 +45,10 @@ public final class SpeedTest {
         final FkProject project = new FkProject();
         final FkFarm farm = new FkFarm(project);
         final Speed speed = new Speed(farm, "fast").bootstrap();
-        speed.add("TST100001", "gh:test/fast#1", 1L);
-        speed.add("TST100002", "gh:test/fast#2", 2L);
+        speed.add("TST100001", "gh:test/fast#1", 1L, Instant.now());
+        speed.add("TST100002", "gh:test/fast#2", 2L, Instant.now());
         // @checkstyle MagicNumber (1 line)
-        speed.add("TST100003", "gh:test/fast#3", 3L);
+        speed.add("TST100003", "gh:test/fast#3", 3L, Instant.now());
         MatcherAssert.assertThat(speed.avg(), Matchers.equalTo(2.0));
     }
 
@@ -64,4 +63,5 @@ public final class SpeedTest {
             Matchers.equalTo(0.0)
         );
     }
+
 }

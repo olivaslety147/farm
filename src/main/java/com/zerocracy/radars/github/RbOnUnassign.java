@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -22,7 +22,8 @@ import com.jcabi.github.Issue;
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
 import com.zerocracy.Project;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.pm.in.Orders;
 import java.io.IOException;
 import java.util.Locale;
@@ -32,9 +33,7 @@ import org.cactoos.text.FormattedText;
 /**
  * Cancel order on unassignment of issue.
  *
- * @author Carlos Miranda (miranda.cma@gmail.com)
- * @version $Id$
- * @since 0.16.1
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
 public final class RbOnUnassign implements Rebound {
@@ -50,7 +49,7 @@ public final class RbOnUnassign implements Rebound {
             .getString("login").toLowerCase(Locale.ENGLISH);
         final String job = new Job(issue).toString();
         final Project project = new GhProject(farm, issue.repo());
-        final Orders orders = new Orders(project).bootstrap();
+        final Orders orders = new Orders(farm, project).bootstrap();
         if (orders.assigned(job)) {
             new ClaimOut()
                 .type("Notify")
@@ -63,7 +62,7 @@ public final class RbOnUnassign implements Rebound {
                         "to cancel the order use `refuse`, as in §6"
                     ).say(sender, orders.performer(job))
                 )
-                .postTo(project);
+                .postTo(new ClaimsOf(farm, project));
         }
         return new FormattedText(
             "Issue #%d was unassigned", issue.number()

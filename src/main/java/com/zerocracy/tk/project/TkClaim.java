@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,7 +19,7 @@ package com.zerocracy.tk.project;
 import com.mongodb.client.model.Filters;
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
-import com.zerocracy.pm.Footprint;
+import com.zerocracy.claims.Footprint;
 import com.zerocracy.pm.staff.Roles;
 import com.zerocracy.pmo.Pmo;
 import com.zerocracy.tk.RqUser;
@@ -47,9 +47,7 @@ import org.takes.rs.xe.XeTransform;
 /**
  * Single claim take.
  *
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.20
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  * @todo #489:30min Change claim.xsl in such a way that it displays the
  *  children of this claim as well. They are returned in the children
@@ -80,7 +78,7 @@ public final class TkClaim implements TkRegex {
     public Response act(final RqRegex request) throws IOException {
         final RqProject pkt = new RqProject(this.farm, request);
         final String user = new RqUser(this.farm, request, false).value();
-        final long cid = Long.valueOf(request.matcher().group(2));
+        final String cid = request.matcher().group(2);
         try (final Footprint ftp = new Footprint(this.farm, pkt)) {
             final Collection<XeSource> children = new SolidList<>(
                 new Mapped<>(
@@ -98,7 +96,7 @@ public final class TkClaim implements TkRegex {
                         )
                     ),
                     ftp.collection().find(
-                        Filters.eq("cause", cid)
+                        Filters.regex("cause", cid)
                     )
                 )
             );

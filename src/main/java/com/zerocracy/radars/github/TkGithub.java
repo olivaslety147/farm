@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,23 +21,26 @@ import com.zerocracy.Farm;
 import com.zerocracy.Par;
 import com.zerocracy.entry.ExtDynamo;
 import com.zerocracy.entry.ExtGithub;
+import com.zerocracy.sentry.SafeSentry;
 import com.zerocracy.tk.RsParFlash;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.logging.Level;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.stream.JsonParsingException;
-import org.cactoos.func.UncheckedProc;
+import org.cactoos.func.IoCheckedProc;
 import org.takes.HttpException;
 import org.takes.Request;
 import org.takes.Response;
 import org.takes.Take;
 import org.takes.facets.forward.RsForward;
 import org.takes.rq.RqForm;
+import org.takes.rq.RqHeaders;
 import org.takes.rq.form.RqFormBase;
 import org.takes.rs.RsText;
 import org.takes.rs.RsWithBody;
@@ -46,9 +49,7 @@ import org.takes.rs.RsWithStatus;
 /**
  * GitHub hook, take.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.7
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  * @checkstyle ClassFanOutComplexityCheck (500 lines)
  */
@@ -105,6 +106,10 @@ public final class TkGithub implements Take, Runnable {
                                         "created"
                                     ),
                                     new RbByActions(
+                                        new RbAddToMilestone(),
+                                        "milestoned"
+                                    ),
+                                    new RbByActions(
                                         new RbOnPullRequest(),
                                         "opened", "reopened"
                                     ),
@@ -124,7 +129,9 @@ public final class TkGithub implements Take, Runnable {
                                         "labeled"
                                     ),
                                     new RbByActions(new RbOnAssign(), "assigned"),
-                                    new RbByActions(new RbOnUnassign(), "unassigned")
+                                    new RbByActions(new RbOnUnassign(), "unassigned"),
+                                    new RbByActions(new RbRelease(), "published"),
+                                    new RbByEvent(new RbOnRepoEvent(), "repository")
                                 )
                             )
                         )
@@ -144,6 +151,11 @@ public final class TkGithub implements Take, Runnable {
         this.rebound = rbd;
     }
 
+    // @todo #1390:30min Adjust call to Quota.over with proper message and
+    //  create test case for the scenario it returns true.
+    //  PR https://github.com/zerocracy/farm/pull/1501 introduced this change
+    //  on Quota.over and has example of its adjustment and test for
+    //  AcceptInvitations.
     @Override
     public Response act(final Request req) throws IOException {
         final RqForm form = new RqFormBase(req);
@@ -175,23 +187,28 @@ public final class TkGithub implements Take, Runnable {
                 HttpURLConnection.HTTP_UNAVAILABLE
             );
         }
+        final JsonObject json = Json.createObjectBuilder(
+            TkGithub.json(body.iterator().next())
+        ).add(
+            "_0crat_github_event",
+            new RqHeaders.Smart(req).single("X-GitHub-Event", "")
+                .toLowerCase(Locale.US)
+        ).build();
         return new RsWithStatus(
-            new RsText(
-                this.rebound.react(
-                    this.farm,
-                    github,
-                    TkGithub.json(body.iterator().next())
-                )
-            ),
+            new RsText(this.rebound.react(this.farm, github, json)),
             HttpURLConnection.HTTP_OK
         );
     }
 
     @Override
     public void run() {
-        new UncheckedProc<>(
-            new AcceptInvitations(new ExtGithub(this.farm).value())
-        ).exec(true);
+        try {
+            new IoCheckedProc<>(
+                new AcceptInvitations(new ExtGithub(this.farm).value())
+            ).exec(true);
+        } catch (final IOException err) {
+            new SafeSentry(this.farm).capture(err);
+        }
     }
 
     /**

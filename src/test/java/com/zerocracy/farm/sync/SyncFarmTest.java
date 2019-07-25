@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -23,12 +23,10 @@ import com.zerocracy.Item;
 import com.zerocracy.Project;
 import com.zerocracy.RunsInThreads;
 import com.zerocracy.farm.S3Farm;
-import com.zerocracy.farm.fake.FkFarm;
+import com.zerocracy.farm.props.PropsFarm;
 import com.zerocracy.pm.scope.Wbs;
 import com.zerocracy.pm.staff.Roles;
-import com.zerocracy.pmo.People;
 import com.zerocracy.pmo.Pmo;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -36,19 +34,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.cactoos.func.RunnableOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
-import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 
 /**
  * Test case for {@link SyncFarm}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.10
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  * @checkstyle ExecutableStatementCountCheck (500 lines)
  */
 public final class SyncFarmTest {
+
+    /**
+     * Timeout rule.
+     */
+    @Rule
+    public final Timeout timeout = Timeout.seconds(5L);
 
     @Test
     public void makesProjectsThreadSafe() throws Exception {
@@ -85,7 +88,9 @@ public final class SyncFarmTest {
             "the-bucket-1"
         );
         try (final Farm farm = new SyncFarm(
-            new S3Farm(bucket), TimeUnit.SECONDS.toMillis(1L)
+            new PropsFarm(new S3Farm(bucket)),
+            new TestLocks(),
+            TimeUnit.SECONDS.toMillis(1L)
         )) {
             final Project pmo = new Pmo(farm);
             final CountDownLatch locked = new CountDownLatch(1);
@@ -116,21 +121,5 @@ public final class SyncFarmTest {
                 );
             }
         }
-    }
-
-    /**
-     * Shutdown test.
-     * @throws Exception Expected
-     * @todo #476:30min Method freeze should wait for all processed claims,
-     *  and stop giving new claims with IOException,
-     *  it should block all SyncProjects so they stops to
-     *  return SyncItems and wait for all current opened SyncItems to close.
-     */
-    @Test(expected = IOException.class)
-    @Ignore
-    public void freezeAndBlockNewItems() throws Exception {
-        final SyncFarm farm = new SyncFarm(new FkFarm());
-        farm.close();
-        new People(farm).bootstrap();
     }
 }

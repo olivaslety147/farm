@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,8 +21,9 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.SoftException
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.in.Orders
 
 def exec(Project pmo, XML xml) {
@@ -39,22 +40,22 @@ def exec(Project pmo, XML xml) {
   }
   Project target = projects[0]
   String author = claim.author()
-  Orders orders = new Orders(target).bootstrap()
+  Orders orders = new Orders(farm, target).bootstrap()
   for (String job : orders.jobs(author)) {
     claim.copy()
       .type('Cancel order')
       .param('job', job)
       .param('reason', new Par('@%s decided to quit the project').say(author))
-      .postTo(target)
+      .postTo(new ClaimsOf(farm, target))
   }
   claim.copy()
     .type('Resign all roles')
     .param('login', author)
     .param('reason', 'The user asked to leave')
-    .postTo(target)
+    .postTo(new ClaimsOf(farm, target))
   claim.reply(
     new Par(
       'You are not in the project %s anymore.'
     ).say(pid)
-  ).postTo(pmo)
+  ).postTo(new ClaimsOf(farm))
 }

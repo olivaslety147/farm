@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,9 +21,7 @@ import java.io.IOException;
 /**
  * Voter.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.12
+ * @since 1.0
  */
 public interface Votes {
 
@@ -36,4 +34,28 @@ public interface Votes {
      */
     double take(String login, StringBuilder log) throws IOException;
 
+    /**
+     * Fake vote.
+     */
+    final class Fake implements Votes {
+
+        /**
+         * Vote.
+         */
+        private final double value;
+
+        /**
+         * Ctor.
+         *
+         * @param vote Vote
+         */
+        public Fake(final double vote) {
+            this.value = vote;
+        }
+
+        @Override
+        public double take(final String login, final StringBuilder log) {
+            return this.value;
+        }
+    }
 }

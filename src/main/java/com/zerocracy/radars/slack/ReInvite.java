@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,7 +16,6 @@
  */
 package com.zerocracy.radars.slack;
 
-import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackChannelJoined;
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
@@ -25,16 +24,14 @@ import java.io.IOException;
 /**
  * Invite to the channel.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  */
 final class ReInvite implements Reaction<SlackChannelJoined> {
 
     @Override
     public boolean react(final Farm farm, final SlackChannelJoined event,
-        final SlackSession session) throws IOException {
-        session.sendMessage(
+        final SkSession session) throws IOException {
+        session.send(
             event.getSlackChannel(),
             new Par(
                 "Thanks for inviting me here;",

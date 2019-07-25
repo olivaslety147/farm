@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -23,9 +23,10 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.SoftException
+import com.zerocracy.claims.ClaimIn
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.entry.ExtGithub
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
 import com.zerocracy.pmo.Catalog
 
 def exec(Project project, XML xml) {
@@ -34,9 +35,16 @@ def exec(Project project, XML xml) {
   new Assume(project, xml).roles('PO', 'ARC')
   ClaimIn claim = new ClaimIn(xml)
   String pid = project.pid()
-  String rel = claim.param('rel')
-  String href = claim.param('href')
+  String rel = claim.param('rel').toLowerCase(Locale.US)
+  String href = claim.param('href').toLowerCase(Locale.US)
   Farm farm = binding.variables.farm
+  Catalog catalog = new Catalog(farm).bootstrap()
+  if (catalog.hasLink(pid, rel, href)) {
+    claim.reply(
+      new Par(farm, 'The project %s already has link rel=\'%s\' ref=\'%s\'')
+        .say(pid, rel, href)
+    ).postTo(new ClaimsOf(farm, project))
+  }
   if (rel == 'github') {
     Repo.Smart repo = new Repo.Smart(
       new ExtGithub(farm).value().repos().get(new Coordinates.Simple(href))
@@ -53,18 +61,17 @@ def exec(Project project, XML xml) {
       'par', new Par(
         'We started to work with https://github.com/%s',
       ).say(href)
-    ).postTo(project)
+    ).postTo(new ClaimsOf(farm, project))
   }
-  Catalog catalog = new Catalog(farm).bootstrap()
   catalog.link(pid, rel, href)
   claim.reply(
     new Par(
       'The project is linked with rel=`%s` and href=`%s`, by §17'
     ).say(rel, href)
-  ).postTo(project)
+  ).postTo(new ClaimsOf(farm, project))
   claim.copy()
     .type('Project link was added')
     .param('rel', rel)
     .param('href', href)
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
 }

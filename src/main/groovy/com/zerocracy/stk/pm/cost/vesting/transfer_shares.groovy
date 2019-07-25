@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,18 +17,30 @@
 package com.zerocracy.stk.pm.cost.vesting
 
 import com.jcabi.xml.XML
+import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.cash.Cash
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.cost.Equity
+import com.zerocracy.pm.cost.Rates
 import com.zerocracy.pm.cost.Vesting
 import com.zerocracy.pm.staff.Roles
 
+/**
+ * Transfer shares from project to user.
+ * <p>
+ * Shares amount is calculating based on 'vesting rate' of the user.
+ * This stakeholder handles shares payment claims and pay with equity to user.
+ *
+ * @param project Project
+ * @param xml XML
+ */
 def exec(Project project, XML xml) {
   new Assume(project, xml).notPmo()
-  new Assume(project, xml).type('Make payment')
+  new Assume(project, xml).type('Transfer shares')
   ClaimIn claim = new ClaimIn(xml)
   if (!claim.hasParam('job')) {
     return
@@ -50,9 +62,15 @@ def exec(Project project, XML xml) {
   if (claim.hasParam('cash')) {
     cash = new Cash.S(claim.param('cash'))
   } else {
-    cash = Cash.ZERO
+    Cash rate = Cash.ZERO
+    Rates rates = new Rates(project).bootstrap()
+    if (rates.exists(login)) {
+      rate = rates.rate(login)
+    }
+    cash = rate.mul(minutes) / 60
   }
   Vesting vesting = new Vesting(project).bootstrap()
+  Farm farm = binding.variables.farm
   if (vesting.exists(login)) {
     Cash reward = (vesting.rate(login).mul(minutes) / 60).add(cash.mul(-1L))
     new Equity(project).bootstrap().add(login, reward)
@@ -63,17 +81,17 @@ def exec(Project project, XML xml) {
       .param('vesting_rate', vesting.rate(login))
       .param('minutes', minutes)
       .param('cash', cash)
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
     claim.copy()
       .type('Notify user')
       .token("user;${login}")
       .param(
         'message',
         new Par(
-          'You earned %s of new share in %s for %s'
+          farm, 'You earned %s of new share in %s for %s'
         ).say(reward, project.pid(), job)
       )
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
     claim.copy()
       .type('Notify project')
       .param(
@@ -82,6 +100,6 @@ def exec(Project project, XML xml) {
           'We just transferred %s of share for %s to @%s'
         ).say(reward, job, login)
       )
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   }
 }

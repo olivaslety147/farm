@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -34,13 +34,15 @@ import java.util.LinkedList;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.cactoos.Scalar;
-import org.cactoos.func.SolidFunc;
+import org.cactoos.cache.SoftFunc;
+import org.cactoos.func.SyncFunc;
 import org.cactoos.func.UncheckedFunc;
 import org.cactoos.io.InputOf;
 import org.cactoos.io.InputStreamOf;
 import org.cactoos.io.InputWithFallback;
 import org.cactoos.io.LengthOf;
 import org.cactoos.io.TeeInput;
+import org.cactoos.iterable.Mapped;
 import org.cactoos.list.SolidList;
 import org.cactoos.scalar.Reduced;
 import org.cactoos.scalar.Ternary;
@@ -56,11 +58,16 @@ import org.xembly.Xembler;
 
 /**
  * XML document.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
+ *
+ * @todo #1347:30min Xocument is the most slow part of the system,
+ *  especially in bundle tests: bootstrap of a new file can take
+ *  few hundreds ms to complete (in BundleTests too
+ *  many new files to bootstrap). Also there are too many `modify` calls,
+ *  which can take few seconds in sum for one bundle test. Let's investigate
+ *  how to speed up this class and discuss the solution.
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  * @checkstyle ClassFanOutComplexityCheck (500 lines)
- * @since 0.1
+ * @since 1.0
  */
 @SuppressWarnings("PMD.ExcessiveImports")
 public final class Xocument {
@@ -68,20 +75,22 @@ public final class Xocument {
     /**
      * Current DATUM version.
      */
-    public static final String VERSION = "0.61.1";
+    public static final String VERSION = "0.66.1";
 
     /**
      * Cache of documents.
      */
     private static final UncheckedFunc<URL, XML> INDEXES = new UncheckedFunc<>(
-        new SolidFunc<>(
-            url -> new XMLDocument(
-                new TextOf(
-                    new InputWithFallback(
-                        new InputOf(url),
-                        new InputOf("<index/>")
-                    )
-                ).asString()
+        new SyncFunc<>(
+            new SoftFunc<>(
+                url -> new XMLDocument(
+                    new TextOf(
+                        new InputWithFallback(
+                            new InputOf(url),
+                            new InputOf("<index/>")
+                        )
+                    ).asString()
+                )
             )
         )
     );
@@ -141,6 +150,11 @@ public final class Xocument {
      * @param xsd Path of XSD
      * @return This
      * @throws IOException If fails
+     * @todo #1705:30min Xocument writes upgraded xml files with formatting
+     *  incompatible with xcop validation. When upgrade-bundles profile is
+     *  activated it results in xcop errors in the upgraded files.
+     *  After this has been resolved enable upgrade-bundles profile in rultor
+     *  and travis builds.
      */
     public Xocument bootstrap(final String xsd)
         throws IOException {
@@ -255,6 +269,14 @@ public final class Xocument {
         final String after = xml.toString();
         if (!before.toString().equals(after)) {
             new LengthOf(new TeeInput(after, this.file.value())).intValue();
+            Logger.info(
+                this,
+                "modified '%s': %s",
+                this.file.value(),
+                String.join(
+                    ";", new Mapped<>(Object::toString, dirs)
+                )
+            );
         }
     }
 
@@ -360,5 +382,4 @@ public final class Xocument {
         }
         return sum;
     }
-
 }

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,13 +17,11 @@
 package com.zerocracy.stk.pmo.profile
 
 import com.jcabi.xml.XML
-import com.zerocracy.Farm
-import com.zerocracy.Par
-import com.zerocracy.Policy
-import com.zerocracy.Project
-import com.zerocracy.SoftException
+import com.zerocracy.*
+import com.zerocracy.claims.ClaimIn
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.pmo.Awards
 import com.zerocracy.pmo.Exam
 import com.zerocracy.pmo.Rfps
 
@@ -43,10 +41,12 @@ def exec(Project pmo, XML xml) {
   new Exam(farm, author).min('40.min', 512)
   String job = 'gh:zerocracy/datum#1'
   int points = new Policy().get('40.price', -256)
+  String owner = rfps.owner(rid)
   String email = rfps.buy(rid, author)
   String reason = new Par(
     'RFP #%d has been purchased: %s'
   ).say(rid, email)
+  Awards awards = new Awards(farm, author)
   awards.add(pmo, points, job, new Par.ToText(reason).toString())
   claim.copy()
     .type('Award points were added')
@@ -54,14 +54,14 @@ def exec(Project pmo, XML xml) {
     .param('login', author)
     .param('points', points)
     .param('reason', reason)
-    .postTo(pmo)
+    .postTo(new ClaimsOf(farm))
   claim.reply(
     new Par(
       'Thanks for purchasing RFP #%d;',
       'the email of the client is %s;',
       'we deducted %d points from your reputation, according to §40'
     ).say(rid, email, -points)
-  ).postTo(pmo)
+  ).postTo(new ClaimsOf(farm))
   claim.copy().type('Notify user').token("user;${owner}").param(
     'message',
     new Par(
@@ -70,10 +70,10 @@ def exec(Project pmo, XML xml) {
       'since he/she now knows your email;',
       'wish you luck in your new project!'
     ).say(rid, author)
-  ).postTo(pmo)
+  ).postTo(new ClaimsOf(farm))
   claim.copy().type('Notify PMO').param(
     'message', new Par(
       'RFP #%d has been purchased by @%s: %s'
     ).say(rid, author, email)
-  ).postTo(pmo)
+  ).postTo(new ClaimsOf(farm))
 }

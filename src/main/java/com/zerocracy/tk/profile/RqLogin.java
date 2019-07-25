@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,6 +18,7 @@ package com.zerocracy.tk.profile;
 
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
+import com.zerocracy.pm.staff.ProjectsRoles;
 import com.zerocracy.pmo.People;
 import com.zerocracy.tk.RsParFlash;
 import java.io.IOException;
@@ -30,9 +31,7 @@ import org.takes.facets.forward.RsForward;
 /**
  * User login from the request.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.12
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class RqLogin implements Scalar<String> {
@@ -70,7 +69,9 @@ public final class RqLogin implements Scalar<String> {
                 )
             );
         }
-        if (!new People(this.farm).bootstrap().hasMentor(login)) {
+        final boolean owner = new ProjectsRoles(this.farm, login)
+            .hasRole("PO");
+        if (!new People(this.farm).bootstrap().hasMentor(login) && !owner) {
             throw new RsForward(
                 new RsParFlash(
                     new Par(

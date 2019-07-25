@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,29 +16,28 @@
  */
 package com.zerocracy.radars.github;
 
-import com.jcabi.github.Github;
 import com.jcabi.log.VerboseRunnable;
 import com.jcabi.log.VerboseThreads;
 import com.zerocracy.Farm;
 import com.zerocracy.entry.ExtGithub;
+import com.zerocracy.sentry.SafeSentry;
+import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.cactoos.func.UncheckedProc;
+import org.cactoos.func.IoCheckedProc;
 
 /**
  * GitHub hook, take.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.18
+ * @since 1.0
  */
 public final class GithubRoutine implements Runnable {
 
     /**
-     * Github.
+     * Farm.
      */
-    private final Github github;
+    private final Farm farm;
 
     /**
      * Service.
@@ -50,15 +49,7 @@ public final class GithubRoutine implements Runnable {
      * @param farm Farm
      */
     public GithubRoutine(final Farm farm) {
-        this(new ExtGithub(farm).value());
-    }
-
-    /**
-     * Ctor.
-     * @param ghub Github
-     */
-    public GithubRoutine(final Github ghub) {
-        this.github = ghub;
+        this.farm = farm;
         this.service = Executors.newSingleThreadScheduledExecutor(
             new VerboseThreads(GithubRoutine.class)
         );
@@ -76,8 +67,12 @@ public final class GithubRoutine implements Runnable {
 
     @Override
     public void run() {
-        new UncheckedProc<>(
-            new AcceptInvitations(this.github)
-        ).exec(true);
+        try {
+            new IoCheckedProc<>(
+                new AcceptInvitations(new ExtGithub(this.farm).value())
+            ).exec(true);
+        } catch (final IOException err) {
+            new SafeSentry(this.farm).capture(err);
+        }
     }
 }

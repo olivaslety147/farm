@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -33,9 +33,7 @@ import org.takes.rq.RqWithHeaders;
 
 /**
  * Test case for {@link RqProject}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.20
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
@@ -44,7 +42,7 @@ public final class RqProjectTest {
 
     @Test
     public void buildsProject() throws Exception {
-        try (final Farm farm = new SmartFarm(new FkFarm()).value()) {
+        try (final Farm farm = new SmartFarm(new FkFarm())) {
             final Catalog catalog = new Catalog(new Pmo(farm)).bootstrap();
             final String pid = "A1B2C3D4F";
             catalog.add(pid, String.format("2017/07/%s/", pid));
@@ -77,7 +75,7 @@ public final class RqProjectTest {
     public void buildsPmo() throws Exception {
         final Farm raw = new FkFarm();
         new Roles(new Pmo(raw)).bootstrap().assign("yegor256", "PO");
-        try (final Farm farm = new SmartFarm(raw).value()) {
+        try (final Farm farm = new SmartFarm(raw)) {
             new People(new Pmo(farm)).bootstrap().invite("yegor256", "mentor");
             MatcherAssert.assertThat(
                 new RqProject(

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,8 +17,10 @@
 package com.zerocracy.radars;
 
 import com.jcabi.xml.XMLDocument;
+import com.zerocracy.claims.ClaimsItem;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.farm.fake.FkProject;
-import com.zerocracy.pm.Claims;
+import com.zerocracy.farm.props.PropsFarm;
 import java.util.Collection;
 import org.cactoos.list.SolidList;
 import org.hamcrest.MatcherAssert;
@@ -29,12 +31,11 @@ import org.junit.runners.Parameterized;
 
 /**
  * Test case for {@link ClaimOnQuestion}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.12
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle JavadocVariableCheck (500 lines)
  * @checkstyle VisibilityModifierCheck (500 lines)
+ * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @RunWith(Parameterized.class)
 public final class ClaimOnQuestionTest {
@@ -60,8 +61,9 @@ public final class ClaimOnQuestionTest {
             this.query
         );
         final FkProject project = new FkProject();
-        new ClaimOnQuestion(question).claim().postTo(project);
-        final Claims claims = new Claims(project).bootstrap();
+        new ClaimOnQuestion(question).claim()
+            .postTo(new ClaimsOf(new PropsFarm(), project));
+        final ClaimsItem claims = new ClaimsItem(project).bootstrap();
         MatcherAssert.assertThat(
             claims.iterate(),
             Matchers.iterableWithSize(1)

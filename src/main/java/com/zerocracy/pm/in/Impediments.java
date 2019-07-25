@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,6 +16,7 @@
  */
 package com.zerocracy.pm.in;
 
+import com.zerocracy.Farm;
 import com.zerocracy.Item;
 import com.zerocracy.Par;
 import com.zerocracy.Project;
@@ -29,12 +30,16 @@ import org.xembly.Directives;
 /**
  * Job impediments.
  *
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.19
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class Impediments {
+
+    /**
+     * Farm.
+     */
+    private final Farm farm;
+
     /**
      * A project.
      */
@@ -42,9 +47,11 @@ public final class Impediments {
 
     /**
      * Ctor.
+     * @param farm Farm
      * @param pkt A project
      */
-    public Impediments(final Project pkt) {
+    public Impediments(final Farm farm, final Project pkt) {
+        this.farm = farm;
         this.project = pkt;
     }
 
@@ -83,7 +90,7 @@ public final class Impediments {
                 ).say(job)
             );
         }
-        if (!new Orders(this.project).bootstrap().assigned(job)) {
+        if (!new Orders(this.farm, this.project).bootstrap().assigned(job)) {
             throw new SoftException(
                 new Par(
                     "Job %s is not assigned, can't put it on hold"
@@ -113,6 +120,29 @@ public final class Impediments {
     }
 
     /**
+     * Remove a job's impediment.
+     * @param job The job for which we remove the impediment.
+     * @throws IOException If something goes wrong.
+     */
+    public void remove(final String job) throws IOException {
+        if (!this.exists(job)) {
+            throw new SoftException(
+                new Par(
+                    "Job %s is not on hold, no impediment to remove"
+                ).say(job)
+            );
+        }
+        try (final Item item = this.item()) {
+            new Xocument(item.path()).modify(
+                new Directives()
+                    .xpath(Impediments.order(job))
+                    .strict(1)
+                    .remove()
+            );
+        }
+    }
+
+    /**
      * The impediment exists?
      * @param job The job
      * @return TRUE if exists
@@ -121,7 +151,7 @@ public final class Impediments {
     public boolean exists(final String job) throws IOException {
         try (final Item item = this.item()) {
             return !new Xocument(item.path()).nodes(
-                String.format("/impediments/order[@id='%s']", job)
+                Impediments.order(job)
             ).isEmpty();
         }
     }
@@ -145,5 +175,14 @@ public final class Impediments {
      */
     private Item item() throws IOException {
         return this.project.acq("impediments.xml");
+    }
+
+    /**
+     * Construct the pull path to the given job.
+     * @param job The job
+     * @return The full path to the given job
+     */
+    private static String order(final String job) {
+        return String.format("/impediments/order[@id='%s']", job);
     }
 }

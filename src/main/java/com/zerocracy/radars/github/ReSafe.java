@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,8 +20,8 @@ import com.jcabi.github.Comment;
 import com.zerocracy.Farm;
 import com.zerocracy.SoftException;
 import com.zerocracy.farm.props.Props;
+import com.zerocracy.sentry.SafeSentry;
 import com.zerocracy.tools.TxtUnrecoverableError;
-import io.sentry.Sentry;
 import java.io.IOException;
 import org.cactoos.func.FuncOf;
 import org.cactoos.func.FuncWithFallback;
@@ -30,9 +30,8 @@ import org.cactoos.func.IoCheckedFunc;
 /**
  * Safe Reaction on GitHub comment.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.10
+ * @since 1.0
+ * @checkstyle ClassDataAbstractionCoupling (2 lines)
  */
 public final class ReSafe implements Response {
 
@@ -78,7 +77,7 @@ public final class ReSafe implements Response {
                                 )
                             ).asString()
                         );
-                        Sentry.capture(throwable);
+                        new SafeSentry(farm).capture(throwable);
                         throw new IOException(throwable);
                     }
                 )

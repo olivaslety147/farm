@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,32 +21,27 @@ import com.zerocracy.Farm;
 import com.zerocracy.Item;
 import com.zerocracy.Par;
 import com.zerocracy.Policy;
+import com.zerocracy.Project;
 import com.zerocracy.SoftException;
 import com.zerocracy.Xocument;
 import com.zerocracy.cash.Cash;
 import com.zerocracy.cash.CashParsingException;
-import com.zerocracy.pm.staff.Roles;
 import java.io.IOException;
-import java.util.Date;
+import java.time.Instant;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import org.cactoos.iterable.ItemAt;
+import org.cactoos.iterable.Joined;
 import org.cactoos.iterable.Mapped;
 import org.cactoos.scalar.NumberOf;
 import org.cactoos.scalar.UncheckedScalar;
-import org.cactoos.time.DateAsText;
-import org.cactoos.time.DateOf;
 import org.xembly.Directives;
 
 /**
  * Data about people.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
- * @since 0.1
- * @todo #552:30min Let's keep agenda inside `people.xml` and update it
- *  when agenda changed as described in
- *  https://github.com/zerocracy/farm/issues/366#issuecomment-359568311
- *  Also put it as 'agenda' element in TkGang xml.
+ * @since 1.0
  */
 @SuppressWarnings
     (
@@ -60,7 +55,7 @@ public final class People {
     /**
      * PMO.
      */
-    private final Pmo pmo;
+    private final Project pmo;
 
     /**
      * Ctor.
@@ -74,7 +69,7 @@ public final class People {
      * Ctor.
      * @param pkt PMO
      */
-    public People(final Pmo pkt) {
+    public People(final Project pkt) {
         this.pmo = pkt;
     }
 
@@ -210,12 +205,26 @@ public final class People {
 
     /**
      * Invite that person and set a mentor.
+     *
      * @param uid User ID
      * @param mentor User ID of the mentor
      * @throws IOException If fails
      */
     public void invite(final String uid, final String mentor)
         throws IOException {
+        this.invite(uid, mentor, false);
+    }
+
+    /**
+     * Invite that person and set a mentor.
+     *
+     * @param uid User ID
+     * @param mentor User ID of the mentor
+     * @param force Ignore max student limitation if true
+     * @throws IOException If fails
+     */
+    public void invite(final String uid, final String mentor,
+        final boolean force) throws IOException {
         if (this.hasMentor(uid)) {
             throw new SoftException(
                 new Par(
@@ -232,8 +241,7 @@ public final class People {
                         mentor
                     )
                 ).size();
-            if (current >= max
-                && !new Roles(this.pmo).bootstrap().hasAnyRole(mentor)) {
+            if (!force && current >= max) {
                 throw new SoftException(
                     new Par(
                         "You can not invite more than %d students;",
@@ -327,14 +335,6 @@ public final class People {
                 ).say(rate, min)
             );
         }
-        if (this.wallet(uid).isEmpty()) {
-            throw new SoftException(
-                new Par(
-                    "You must configure your wallet first,",
-                    "before setting the rate to %s, see §20"
-                ).say(rate)
-            );
-        }
         try (final Item item = this.item()) {
             new Xocument(item.path()).modify(
                 People.start(uid)
@@ -371,85 +371,19 @@ public final class People {
     }
 
     /**
-     * Set wallet.
-     * @param uid User ID
-     * @param bank Bank
-     * @param wallet Wallet value
-     * @throws IOException If fails
-     * @checkstyle CyclomaticComplexityCheck (100 lines)
-     */
-    public void wallet(final String uid, final String bank,
-        final String wallet) throws IOException {
-        if (!bank.matches("paypal|btc|bch|eth|ltc")) {
-            throw new SoftException(
-                new Par(
-                    "Bank name `%s` is invalid, we accept only",
-                    "`paypal`, `btc`, `bch`, `eth`, or `ltc`, see §20"
-                ).say(bank)
-            );
-        }
-        if ("paypal".equals(bank)
-            && !wallet.matches("\\b[\\w.%-]+@[-.\\w]+\\.[A-Za-z]{2,4}\\b")) {
-            throw new SoftException(
-                new Par("Email address is not valid: `%s`").say(wallet)
-            );
-        }
-        if ("btc".equals(bank)
-            && !wallet.matches("(1|3|bc1)[a-zA-Z0-9]{20,40}")) {
-            throw new SoftException(
-                new Par("Bitcoin address is not valid: `%s`").say(wallet)
-            );
-        }
-        if ("bch".equals(bank)
-            && !wallet.matches("[pq][a-z0-9]{41}")) {
-            throw new SoftException(
-                new Par("Bitcoin Cash address is not valid: `%s`").say(wallet)
-            );
-        }
-        if ("eth".equals(bank)
-            && !wallet.matches("(0x)?[0-9a-fA-F]{40}")) {
-            throw new SoftException(
-                new Par("Ethereum address is not valid: `%s`").say(wallet)
-            );
-        }
-        if ("ltc".equals(bank)
-            && !wallet.matches("[0-9a-zA-Z]{34}")) {
-            throw new SoftException(
-                new Par("Litecoin address is not valid: `%s`").say(wallet)
-            );
-        }
-        try (final Item item = this.item()) {
-            new Xocument(item.path()).modify(
-                People.start(uid)
-                    .addIf("wallet")
-                    .set(wallet)
-                    .attr("bank", bank)
-            );
-        }
-    }
-
-    /**
      * Get user wallet.
      * @param uid User ID
      * @return Wallet of the user or empty string if it's not set
      * @throws IOException If fails
+     * @todo #1966:30min Refactor wallet usage, wallet command was removed
+     *  from chat bots, so we're sending all payments only via Zold WTS
+     *  by Github username. So let's update datum and remove elements from
+     *  'people' scheme and remove it from farm then. Same for bank()
+     *  method.
+     * @checkstyle NonStaticMethodCheck (5 lines)
      */
     public String wallet(final String uid) throws IOException {
-        try (final Item item = this.item()) {
-            final Iterator<String> wallet = new Xocument(item.path()).xpath(
-                String.format(
-                    "/people/person[@id='%s']/wallet/text()",
-                    uid
-                )
-            ).iterator();
-            final String value;
-            if (wallet.hasNext()) {
-                value = wallet.next();
-            } else {
-                value = "";
-            }
-            return value;
-        }
+        return uid;
     }
 
     /**
@@ -457,23 +391,10 @@ public final class People {
      * @param uid User ID
      * @return Wallet of the user
      * @throws IOException If fails
+     * @checkstyle NonStaticMethodCheck (5 lines)
      */
     public String bank(final String uid) throws IOException {
-        try (final Item item = this.item()) {
-            final Iterator<String> banks = new Xocument(item.path()).xpath(
-                String.format(
-                    "/people/person[@id='%s']/wallet/@bank",
-                    uid
-                )
-            ).iterator();
-            final String value;
-            if (banks.hasNext()) {
-                value = banks.next();
-            } else {
-                value = "";
-            }
-            return value;
-        }
+        return "zld";
     }
 
     /**
@@ -654,11 +575,7 @@ public final class People {
      */
     public void reputation(final String uid, final int rep)
         throws IOException {
-        if (!this.exists(uid)) {
-            throw new IllegalArgumentException(
-                new Par("Person @%s doesn't exist").say(uid)
-            );
-        }
+        this.checkExisting(uid);
         try (final Item item = this.item()) {
             new Xocument(item.path()).modify(
                 new Directives().xpath(
@@ -678,11 +595,7 @@ public final class People {
      * @throws IOException If fails
      */
     public int reputation(final String uid) throws IOException {
-        if (!this.exists(uid)) {
-            throw new IllegalArgumentException(
-                new Par("Person @%s doesn't exist").say(uid)
-            );
-        }
+        this.checkExisting(uid);
         try (final Item item = this.item()) {
             return new NumberOf(
                 new Xocument(item.path()).xpath(
@@ -693,6 +606,90 @@ public final class People {
                     "0"
                 )
             ).intValue();
+        }
+    }
+
+    /**
+     * Update number of jobs in person's agenda.
+     * @param uid User id
+     * @param jobs Jobs
+     * @throws IOException If fails
+     */
+    public void jobs(final String uid, final int jobs)
+        throws IOException {
+        this.checkExisting(uid);
+        try (final Item item = this.item()) {
+            new Xocument(item.path()).modify(
+                new Directives().xpath(
+                    String.format(
+                        "/people/person[@id='%s']",
+                        uid
+                    )
+                ).addIf("jobs").set(jobs)
+            );
+        }
+    }
+
+    /**
+     * Get number of jobs in person's agenda.
+     * @param uid User id
+     * @return Number of jobs in agenda
+     * @throws IOException If fails
+     */
+    public int jobs(final String uid) throws IOException {
+        this.checkExisting(uid);
+        try (final Item item = this.item()) {
+            return new NumberOf(
+                new Xocument(item.path()).xpath(
+                    String.format(
+                        "/people/person[@id='%s']/jobs/text()",
+                        uid
+                    ),
+                    "0"
+                )
+            ).intValue();
+        }
+    }
+
+    /**
+     * Update person's speed.
+     * @param uid User id
+     * @param speed Speed
+     * @throws IOException If fails
+     */
+    public void speed(final String uid, final double speed)
+        throws IOException {
+        this.checkExisting(uid);
+        try (final Item item = this.item()) {
+            new Xocument(item.path()).modify(
+                new Directives().xpath(
+                    String.format(
+                        "/people/person[@id='%s']",
+                        uid
+                    )
+                ).addIf("speed").set(speed)
+            );
+        }
+    }
+
+    /**
+     * Get person's speed.
+     * @param uid User id
+     * @return Speed
+     * @throws IOException If fails
+     */
+    public double speed(final String uid) throws IOException {
+        this.checkExisting(uid);
+        try (final Item item = this.item()) {
+            return new NumberOf(
+                new Xocument(item.path()).xpath(
+                    String.format(
+                        "/people/person[@id='%s']/speed/text()",
+                        uid
+                    ),
+                    "0.0"
+                )
+            ).doubleValue();
         }
     }
 
@@ -716,17 +713,13 @@ public final class People {
      * @param when When applied (UTC)
      * @throws IOException If fails
      */
-    public void apply(final String uid, final Date when) throws IOException {
-        if (!this.exists(uid)) {
-            throw new IllegalArgumentException(
-                new Par("Person @%s doesn't exist").say(uid)
-            );
-        }
+    public void apply(final String uid, final Instant when) throws IOException {
+        this.checkExisting(uid);
         try (final Item item = this.item()) {
             new Xocument(item.path()).modify(
                 new Directives().xpath(
                     String.format("//people/person[@id  ='%s']", uid)
-                ).addIf("applied").set(new DateAsText(when).asString())
+                ).addIf("applied").set(when.toString())
             );
         }
     }
@@ -738,11 +731,7 @@ public final class People {
      * @throws IOException If fails
      */
     public boolean applied(final String uid) throws IOException {
-        if (!this.exists(uid)) {
-            throw new IllegalArgumentException(
-                new Par("Person @%s doesn't exist").say(uid)
-            );
-        }
+        this.checkExisting(uid);
         try (final Item item = this.item()) {
             return !new Xocument(item).nodes(
                 String.format("//people/person[@id  ='%s']/applied", uid)
@@ -756,26 +745,120 @@ public final class People {
      * @return Applied time (UTC)
      * @throws IOException If fails
      */
-    public Date appliedTime(final String uid) throws IOException {
-        if (!this.exists(uid)) {
-            throw new IllegalArgumentException(
-                new Par("Person @%s doesn't exist").say(uid)
-            );
-        }
+    public Instant appliedTime(final String uid) throws IOException {
+        this.checkExisting(uid);
         if (!this.applied(uid)) {
             throw new IllegalArgumentException(
                 new Par("Person @%s doesn't have apply-time").say(uid)
             );
         }
         try (final Item item = this.item()) {
-            return new DateOf(
+            return Instant.parse(
                 new Xocument(item).xpath(
                     String.format(
                         "//people/person[@id  ='%s']/applied/text()",
                         uid
                     )
                 ).get(0)
-            ).value();
+            );
+        }
+    }
+
+    /**
+     * Skills of a person.
+     * @param user Person's login
+     * @return Iterable with skills
+     * @throws IOException If fails
+     */
+    public Iterable<String> skills(final String user) throws IOException {
+        try (final Item item = this.item()) {
+            return new Mapped<>(
+                xml -> xml.node().getTextContent(),
+                new Xocument(item.path()).nodes(
+                    String.format(
+                        "/people/person[@id = '%s']/skills/skill",
+                        user
+                    )
+                )
+            );
+        }
+    }
+
+    /**
+     * Update the list of user skills.
+     * @param uid User id
+     * @param skills List of skills
+     * @throws IOException If fails
+     */
+    public void skills(final String uid, final Iterable<String> skills)
+        throws IOException {
+        this.checkExisting(uid);
+        try (final Item item = this.item()) {
+            new Xocument(item.path()).modify(
+                new Directives().xpath(
+                    String.format(
+                        "/people/person[@id='%s']/skills",
+                        uid
+                    )
+                )
+                    .remove()
+                    .add("skills").attr("updated", Instant.now())
+                    .append(
+                        new Joined<>(
+                            new Mapped<>(
+                                skill -> new Directives().add("skill")
+                                    .set(skill).up(),
+                                skills
+                            )
+                        )
+                    )
+            );
+        }
+    }
+
+    /**
+     * Active users IDs (with reputation > 256).
+     * @return Active users IDs set
+     * @throws IOException If fails
+     */
+    public Set<String> active() throws IOException {
+        try (final Item item = this.item()) {
+            return new HashSet<>(
+                new Xocument(item).xpath(
+                    "/people/person[reputation > 256]/@id"
+                )
+            );
+        }
+    }
+
+    /**
+     * Visible users (with mentor and non-zero reputation).
+     * @return Visible users set
+     * @throws IOException If fails
+     */
+    public Set<String> visible() throws IOException {
+        try (final Item item = this.item()) {
+            return new HashSet<>(
+                new Xocument(item).xpath(
+                    "/people/person[mentor and reputation > 0]/@id"
+                )
+            );
+        }
+    }
+
+    /**
+     * Total reputation of all visible users.
+     * @return Reputation number
+     * @throws IOException If fails
+     */
+    public int totalReputation() throws IOException {
+        try (final Item item = this.item()) {
+            return new NumberOf(
+                new Xocument(item).xpath(
+                    "sum(/people/person[mentor and reputation >0]/reputation)",
+                    "0"
+                )
+            ).intValue();
         }
     }
 
@@ -806,7 +889,9 @@ public final class People {
             .add("reputation").set("0").up()
             .add("jobs").set("0").up()
             .add("projects").set("0").up()
-            .add("skills").attr("updated", new DateAsText().asString()).up()
+            .add("speed").set("0.0").up()
+            .add("skills").attr("updated", Instant.now()).up()
+            .add("active").set(true).up()
             .add("links")
             .add("link")
             .attr("rel", "github")
@@ -818,5 +903,18 @@ public final class People {
                 )
             )
             .strict(1);
+    }
+
+    /**
+     * Check if user exists.
+     * @param uid UID of user
+     * @throws IOException If fails
+     */
+    private void checkExisting(final String uid) throws IOException {
+        if (!this.exists(uid)) {
+            throw new IllegalArgumentException(
+                new Par("Person @%s doesn't exist").say(uid)
+            );
+        }
     }
 }

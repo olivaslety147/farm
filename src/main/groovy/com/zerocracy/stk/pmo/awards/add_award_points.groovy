@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,14 +20,17 @@ import com.jcabi.xml.XML
 import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pmo.Awards
 
 def exec(Project project, XML xml) {
-  new Assume(project, xml).notPmo()
-  new Assume(project, xml).type('Make payment')
+  new Assume(project, xml).type('Add award points')
   ClaimIn claim = new ClaimIn(xml)
+  if (!claim.hasParam('minutes')) {
+    return
+  }
   String job = claim.param('job')
   String login = claim.param('login')
   int minutes = Integer.parseInt(claim.param('minutes'))
@@ -44,5 +47,5 @@ def exec(Project project, XML xml) {
     .param('login', login)
     .param('points', minutes)
     .param('reason', reason)
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
 }

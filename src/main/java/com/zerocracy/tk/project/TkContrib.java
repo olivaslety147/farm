@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,6 +16,7 @@
  */
 package com.zerocracy.tk.project;
 
+import com.jcabi.log.Logger;
 import com.zerocracy.Farm;
 import com.zerocracy.Project;
 import com.zerocracy.cash.Cash;
@@ -23,10 +24,12 @@ import com.zerocracy.farm.props.Props;
 import com.zerocracy.pm.cost.Estimates;
 import com.zerocracy.pm.cost.Ledger;
 import com.zerocracy.pmo.Catalog;
+import com.zerocracy.pmo.recharge.Stripe;
 import com.zerocracy.tk.RqUser;
 import com.zerocracy.tk.RsPage;
 import com.zerocracy.tk.RsParFlash;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.logging.Level;
 import org.takes.Response;
 import org.takes.facets.fork.RqRegex;
@@ -38,12 +41,15 @@ import org.takes.rs.xe.XeChain;
 /**
  * Contribution page.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.22
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class TkContrib implements TkRegex {
+
+    /**
+     * Revenue threshold.
+     */
+    private static final BigDecimal THRESHOLD = new BigDecimal("2048");
 
     /**
      * Farm.
@@ -73,6 +79,15 @@ public final class TkContrib implements TkRegex {
                 String.format("/p/%s", project.pid())
             );
         }
+        final BigDecimal rev = new Stripe(this.farm).dailyRevenue("USD");
+        Logger.info(this, "/contrib/%s : rev=%s", rev.toString());
+        final String key;
+        final boolean can = rev.compareTo(TkContrib.THRESHOLD) < 0;
+        if (can) {
+            key = new Props(this.farm).get("//stripe/key", "");
+        } else {
+            key = "";
+        }
         return new RsPage(
             this.farm,
             "/xsl/contrib.xsl",
@@ -86,18 +101,20 @@ public final class TkContrib implements TkRegex {
                         new Catalog(this.farm).bootstrap().title(pid)
                     ),
                     new XeAppend(
-                        "stripe_key",
-                        new Props(this.farm).get("//stripe/key", "")
+                        "stripe_key", key
+                    ),
+                    new XeAppend(
+                        "can_pay", Boolean.toString(can)
                     ),
                     new XeAppend(
                         "balance",
-                        new Ledger(project).bootstrap().cash().add(
-                            new Estimates(project).bootstrap().total().mul(-1L)
+                        new Ledger(this.farm, project).bootstrap().cash().add(
+                            new Estimates(this.farm, project).bootstrap()
+                                .total().mul(-1L)
                         ).toString()
                     )
                 );
             }
         );
     }
-
 }

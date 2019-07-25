@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -37,9 +37,7 @@ import org.xembly.Xembler;
 /**
  * Project in S3.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  */
 @EqualsAndHashCode(of = "prefix")
 final class S3Project implements Project {

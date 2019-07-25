@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -34,9 +34,7 @@ import org.cactoos.func.UncheckedFunc;
 /**
  * Slack listening radar.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class SlackRadar implements AutoCloseable {
@@ -59,7 +57,7 @@ public final class SlackRadar implements AutoCloseable {
     /**
      * Slack session provider.
      */
-    private final UncheckedFunc<String, SlackSession> slackssess;
+    private final UncheckedFunc<String, SkSession> slackssess;
 
     /**
      * Ctor.
@@ -99,7 +97,9 @@ public final class SlackRadar implements AutoCloseable {
         this.joined = new ReLogged<>(
             new ReInvite()
         );
-        this.slackssess = new UncheckedFunc<>(sess);
+        this.slackssess = new UncheckedFunc<>(
+            (token) -> new RealSkSession(sess.apply(token))
+        );
     }
 
     /**
@@ -139,7 +139,7 @@ public final class SlackRadar implements AutoCloseable {
 
     @Override
     public void close() throws IOException {
-        for (final SlackSession session : this.sessions().values()) {
+        for (final SkSession session : this.sessions().values()) {
             session.disconnect();
         }
     }
@@ -150,17 +150,20 @@ public final class SlackRadar implements AutoCloseable {
      * @return The session
      * @throws IOException If fails
      */
-    private SlackSession start(final String token) throws IOException {
-        final SlackSession ssn = this.slackssess.apply(token);
+    private SkSession start(final String token) throws IOException {
+        final SkSession ssn = this.slackssess.apply(token);
         ssn.connect();
         Logger.info(
             this, "Slack connected as @%s/%s to %s",
-            ssn.sessionPersona().getUserName(),
-            ssn.sessionPersona().getId(),
+            ssn.persona().getUserName(),
+            ssn.persona().getId(),
             ssn.getTeam().getName()
         );
         ssn.addMessagePostedListener(
             (event, sess) -> {
+                if (Logger.isDebugEnabled(this)) {
+                    Logger.debug(this, "Message posted: %s", event);
+                }
                 try {
                     this.posted.react(this.farm, event, ssn);
                 } catch (final IOException ex) {
@@ -170,6 +173,9 @@ public final class SlackRadar implements AutoCloseable {
         );
         ssn.addChannelJoinedListener(
             (event, sess) -> {
+                if (Logger.isDebugEnabled(this)) {
+                    Logger.debug(this, "Channel joined: %s", event);
+                }
                 try {
                     this.joined.react(this.farm, event, ssn);
                 } catch (final IOException ex) {
@@ -184,8 +190,7 @@ public final class SlackRadar implements AutoCloseable {
      * Sessions.
      * @return Sessions
      */
-    private Map<String, SlackSession> sessions() {
+    private Map<String, SkSession> sessions() {
         return new ExtSlack(this.farm).value();
     }
-
 }

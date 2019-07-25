@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -28,6 +28,7 @@ import com.zerocracy.farm.Errors
 import com.zerocracy.farm.props.Props
 import com.zerocracy.radars.github.Quota
 
+
 def exec(Project project, XML xml) {
   new Assume(project, xml).isPmo()
   new Assume(project, xml).type('Ping hourly')
@@ -46,6 +47,6 @@ def exec(Project project, XML xml) {
   )
   errors.iterate(10, 72L).each { error ->
     errors.remove(error)
-    error.remove()
+    error.comment().remove()
   }
 }

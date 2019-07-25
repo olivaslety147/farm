@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,7 +21,11 @@ import com.zerocracy.Item;
 import com.zerocracy.Project;
 import com.zerocracy.Xocument;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.List;
+import org.cactoos.list.Mapped;
 import org.cactoos.text.JoinedText;
 import org.cactoos.time.DateAsText;
 import org.xembly.Directives;
@@ -29,16 +33,14 @@ import org.xembly.Directives;
 /**
  * Awards of one person.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.12
+ * @since 1.0
  */
 public final class Awards {
 
     /**
      * Project.
      */
-    private final Pmo pmo;
+    private final Project pmo;
 
     /**
      * Login of the person.
@@ -59,7 +61,7 @@ public final class Awards {
      * @param pkt Project
      * @param user The user
      */
-    public Awards(final Pmo pkt, final String user) {
+    public Awards(final Project pkt, final String user) {
         this.pmo = pkt;
         this.login = user;
     }
@@ -81,7 +83,7 @@ public final class Awards {
      * @param date Date
      * @throws IOException If failed
      */
-    public void removeOlderThan(final Date date) throws IOException {
+    public void removeOlderThan(final Instant date) throws IOException {
         try (final Item item = this.item()) {
             new Xocument(item.path()).modify(
                 new Directives()
@@ -90,7 +92,7 @@ public final class Awards {
                             "",
                             "/awards/award[xs:dateTime(added) < ",
                             "xs:dateTime('",
-                            new DateAsText(date).asString(),
+                            date.toString(),
                             "')]"
                         ).asString()
                     ).remove()
@@ -171,6 +173,34 @@ public final class Awards {
     }
 
     /**
+     * Rewards for the last days.
+     * @param days Number of last days to check
+     * @return List of awards
+     * @throws IOException If fails
+     */
+    public List<Integer> awards(final int days) throws IOException {
+        try (final Item item = this.item()) {
+            return new Mapped<>(
+                Integer::parseInt,
+                new Xocument(item.path()).xpath(
+                    new JoinedText(
+                        "",
+                        "/awards/award[",
+                        "xs:dateTime(added) > xs:dateTime('",
+                        new DateAsText(
+                            ZonedDateTime.now()
+                                .minusDays(days)
+                                .toInstant()
+                                .toEpochMilli()
+                        ).asString(),
+                        "')]/points/text()"
+                    ).asString()
+                )
+            );
+        }
+    }
+
+    /**
      * The item.
      * @return Item
      * @throws IOException If fails
@@ -180,5 +210,4 @@ public final class Awards {
             String.format("awards/%s.xml", this.login)
         );
     }
-
 }

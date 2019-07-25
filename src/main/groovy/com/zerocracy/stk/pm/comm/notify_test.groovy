@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,7 +20,7 @@ import com.jcabi.xml.XML
 import com.zerocracy.farm.Assume
 import com.zerocracy.Item
 import com.zerocracy.Project
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 // notify test: print message to text file
 
 static exec(Project project, XML xml) {

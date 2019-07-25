@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -22,8 +22,9 @@ import com.zerocracy.Par
 import com.zerocracy.Policy
 import com.zerocracy.Project
 import com.zerocracy.SoftException
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.staff.Roles
 import com.zerocracy.pmo.Catalog
 import com.zerocracy.pmo.Exam
@@ -59,31 +60,31 @@ def exec(Project project, XML xml) {
   catalog.adviser(project.pid(), claim.author())
   claim.copy()
     .type('Adviser was updated')
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
   claim.copy()
     .type('Role was assigned')
     .param('login', author)
     .param('role', 'PO')
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
   claim.copy()
     .type('Role was assigned')
     .param('login', author)
     .param('role', 'ARC')
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
   claim.copy()
-    .type('Make payment')
+    .type('Add award points')
     .param('login', author)
     .param('job', 'none')
     .param('minutes', -new Policy().get('12.price', 256))
     .param('reason', new Par('Project %s was bootstrapped').say(project.pid()))
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
   if (claim.hasParam('channel')) {
     String chnl = claim.param('channel')
     if (chnl.length() > 2) {
       claim.copy()
         .type('Set title')
         .param('title', chnl)
-        .postTo(project)
+        .postTo(new ClaimsOf(farm, project))
     }
   }
   claim.reply(
@@ -101,10 +102,10 @@ def exec(Project project, XML xml) {
       '[Nine Steps to Start',
       'a Software Project](http://www.yegor256.com/2015/08/04/nine-steps-start-software-project.html)'
     ).say(project.pid())
-  ).postTo(project)
+  ).postTo(new ClaimsOf(farm, project))
   claim.copy().type('Notify PMO').param(
     'message', new Par(
       'We just bootstrapped @%s by @%s'
     ).say(project.pid(), author)
-  ).postTo(project)
+  ).postTo(new ClaimsOf(farm, project))
 }

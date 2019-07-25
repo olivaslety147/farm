@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -23,9 +23,10 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Policy
 import com.zerocracy.Project
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.entry.ExtGithub
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pmo.People
 import com.zerocracy.radars.github.Job
 
@@ -51,7 +52,7 @@ def exec(Project project, XML xml) {
       .param('login', author)
       .param('reason', new Par('Bug was reported, see §29').say())
       .param('minutes', new Policy().get('29.price', 15))
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   } else if (author != '0pdd') {
     claim.reply(
       new Par(
@@ -60,6 +61,6 @@ def exec(Project project, XML xml) {
         'you would now earn +15 reputation points, as explained in §29.',
         'You can join and apply to it, see §2.'
       ).say(author, project.pid())
-    ).postTo(project)
+    ).postTo(new ClaimsOf(farm, project))
   }
 }

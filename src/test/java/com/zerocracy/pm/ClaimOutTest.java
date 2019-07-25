@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,27 +17,33 @@
 package com.zerocracy.pm;
 
 import com.jcabi.matchers.XhtmlMatchers;
+import com.jcabi.xml.XMLDocument;
 import com.zerocracy.Project;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.claims.Claims;
+import com.zerocracy.claims.ClaimsItem;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.farm.fake.FkProject;
+import com.zerocracy.farm.props.PropsFarm;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.takes.misc.Concat;
 import org.xembly.Directive;
+import org.xembly.Xembler;
 
 /**
  * Test case for {@link ClaimOut}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.10
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
+ * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
 public final class ClaimOutTest {
 
     @Test
     public void chainsThem() throws Exception {
-        final Claims claims = new Claims(new FkProject()).bootstrap();
+        final ClaimsItem claims = new ClaimsItem(new FkProject()).bootstrap();
         claims.add(
             new Concat<Directive>(
                 new ClaimOut()
@@ -65,10 +71,10 @@ public final class ClaimOutTest {
             .param("minutes", "45min")
             .param("cause_type", "Ping")
             .param("message", "hello, world")
-            .postTo(project);
+            .postTo(new ClaimsOf(new PropsFarm(), project));
         MatcherAssert.assertThat(
             XhtmlMatchers.xhtml(
-                new Claims(project).iterate().iterator().next()
+                new ClaimsItem(project).iterate().iterator().next()
             ),
             XhtmlMatchers.hasXPaths(
                 "/claim/params/param[@name='login' and .='yegor256']",
@@ -79,7 +85,7 @@ public final class ClaimOutTest {
 
     @Test
     public void complainsAboutInvalidClaim() throws Exception {
-        final ClaimOut[] claims = {
+        final ClaimOut[] data = {
             new ClaimOut()
                 .type("Hello dude")
                 .param("author", "yegor256"),
@@ -100,9 +106,10 @@ public final class ClaimOutTest {
                 .param("role", "this is not a role"),
         };
         final Project project = new FkProject();
-        for (final ClaimOut claim : claims) {
+        final Claims claims = new ClaimsOf(new PropsFarm(), project);
+        for (final ClaimOut claim : data) {
             try {
-                claim.postTo(project);
+                claim.postTo(claims);
             } catch (final IllegalArgumentException ex) {
                 MatcherAssert.assertThat(
                     ex.getLocalizedMessage(),
@@ -114,4 +121,26 @@ public final class ClaimOutTest {
         }
     }
 
+    @Test
+    public void escapesParams() throws Exception {
+        MatcherAssert.assertThat(
+            new XMLDocument(
+                new Xembler(
+                    new ClaimOut()
+                        .type("tst")
+                        .param("foo", "bar\0")
+                ).xml()
+            ),
+            XhtmlMatchers.hasXPath(
+                "/claim/params/param[@name='foo' and .= 'bar\\u0000']"
+            )
+        );
+    }
+
+    @Test
+    public void jobWithUnderscore() throws Exception {
+        new ClaimOut()
+            .param("job", "gh:zverovich/timeless_is#1")
+            .postTo(Claims.FAKE);
+    }
 }

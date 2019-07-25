@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -37,9 +37,7 @@ import org.cactoos.scalar.Or;
 /**
  * GitHub job audit.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.22
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.TooManyMethods")
@@ -73,7 +71,7 @@ public final class JobAudit {
      */
     public Collection<String> review(final String job) throws IOException {
         final Roles roles = new Roles(this.project).bootstrap();
-        final Orders orders = new Orders(this.project).bootstrap();
+        final Orders orders = new Orders(this.farm, this.project).bootstrap();
         final List<String> arcs = roles.findByRole("ARC");
         final String performer = orders.performer(job);
         final Issue.Smart issue = new Issue.Smart(

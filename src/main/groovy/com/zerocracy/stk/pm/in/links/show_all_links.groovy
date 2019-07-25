@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,10 +18,11 @@ package com.zerocracy.stk.pm.in.links
 
 import com.jcabi.xml.XML
 import com.zerocracy.Par
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
 import com.zerocracy.Farm
 import com.zerocracy.Project
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pmo.Catalog
 
 def exec(Project project, XML xml) {
@@ -36,5 +37,5 @@ def exec(Project project, XML xml) {
     new Par(
       'This project is linked with %d resource(s), by §17: `%s`',
     ).say(links.size(), String.join('`, `', links))
-  ).postTo(project)
+  ).postTo(new ClaimsOf(farm, project))
 }

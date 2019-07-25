@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -25,6 +25,8 @@ import com.zerocracy.Item;
 import com.zerocracy.Project;
 import com.zerocracy.farm.S3Farm;
 import com.zerocracy.farm.fake.FkFarm;
+import com.zerocracy.farm.fake.FkItem;
+import com.zerocracy.farm.fake.FkProject;
 import com.zerocracy.farm.sync.SyncFarm;
 import com.zerocracy.pm.cost.Boosts;
 import com.zerocracy.pm.scope.Wbs;
@@ -33,13 +35,12 @@ import java.nio.file.Files;
 import org.cactoos.func.RunnableOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
+import org.hamcrest.core.IsEqual;
 import org.junit.Test;
 
 /**
  * Test case for {@link RdItem}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.17
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
@@ -49,8 +50,8 @@ public final class RdItemTest {
     public void catchesIllegalModification() throws Exception {
         try (final Farm farm = new RdFarm(new FkFarm())) {
             final Project pmo = new Pmo(farm);
-            new Boosts(pmo).bootstrap();
-            new Boosts(pmo).boost("gh:test/test#509", 1);
+            new Boosts(farm, pmo).bootstrap();
+            new Boosts(farm, pmo).boost("gh:test/test#509", 1);
         }
     }
 
@@ -76,13 +77,13 @@ public final class RdItemTest {
             new VerboseRunnable(
                 new RunnableOf<>(
                     input -> {
-                        new Boosts(pkt).bootstrap().boost(job, 1);
+                        new Boosts(farm, pkt).bootstrap().boost(job, 1);
                     }
                 ),
                 true, false
             ).run();
             MatcherAssert.assertThat(
-                new Boosts(pkt).bootstrap().factor(job),
+                new Boosts(farm, pkt).bootstrap().factor(job),
                 Matchers.equalTo(2)
             );
         }
@@ -100,15 +101,15 @@ public final class RdItemTest {
             new Wbs(pkt).bootstrap().add(first);
             final String second = "gh:test/test#2";
             new Wbs(pkt).bootstrap().add(second);
-            new Boosts(pkt).bootstrap().boost(first, Tv.TEN);
-            new Boosts(pkt).bootstrap().boost(second, Tv.TEN);
+            new Boosts(farm, pkt).bootstrap().boost(first, Tv.TEN);
+            new Boosts(farm, pkt).bootstrap().boost(second, Tv.TEN);
             new Wbs(pkt).remove(first);
             MatcherAssert.assertThat(
-                new Boosts(pkt).factor(first),
+                new Boosts(farm, pkt).factor(first),
                 Matchers.not(Matchers.equalTo(Tv.TEN))
             );
             MatcherAssert.assertThat(
-                new Boosts(pkt).factor(second),
+                new Boosts(farm, pkt).factor(second),
                 Matchers.equalTo(Tv.TEN)
             );
         }
@@ -126,14 +127,29 @@ public final class RdItemTest {
             final Thread bug = new Thread(
                 new RunnableOf<Object>(
                     input -> {
-                        new Boosts(pkt).bootstrap().boost(job, Tv.TEN);
+                        new Boosts(farm, pkt).bootstrap().boost(job, Tv.TEN);
                     }
                 )
             );
             bug.start();
             bug.join();
-            new Boosts(pkt).bootstrap();
+            new Boosts(farm, pkt).bootstrap();
         }
+    }
+
+    @Test
+    public void createsFileAndDeletesOnClose() throws Exception {
+        final RdItem item = new RdItem(new FkProject(), new FkItem(), "blah");
+        try {
+            MatcherAssert.assertThat(
+                item.path().toFile().exists(), new IsEqual<>(true)
+            );
+        } finally {
+            item.close();
+        }
+        MatcherAssert.assertThat(
+            item.path().toFile().exists(), new IsEqual<>(false)
+        );
     }
 
 }

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -22,9 +22,10 @@ import com.jcabi.log.Logger
 import com.jcabi.xml.XML
 import com.zerocracy.Farm
 import com.zerocracy.Project
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.entry.ExtGithub
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.radars.github.Job
 
 def exec(Project project, XML xml) {
@@ -46,7 +47,7 @@ def exec(Project project, XML xml) {
       .param('login', login)
       .param('repo', issue.repo().coordinates())
       .param('issue', issue.number())
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   } catch (AssertionError ex) {
     Logger.warn(
       this, 'Failed to assign @%s to %s#%d: %s',

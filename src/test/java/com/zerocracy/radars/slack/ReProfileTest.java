@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,9 +20,9 @@ import com.ullink.slack.simpleslackapi.SlackChannel;
 import com.ullink.slack.simpleslackapi.SlackUser;
 import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 import com.zerocracy.Farm;
-import com.zerocracy.farm.fake.FkFarm;
-import com.zerocracy.pm.ClaimIn;
-import com.zerocracy.pm.Claims;
+import com.zerocracy.claims.ClaimIn;
+import com.zerocracy.claims.ClaimsItem;
+import com.zerocracy.farm.props.PropsFarm;
 import com.zerocracy.pmo.People;
 import com.zerocracy.pmo.Pmo;
 import org.hamcrest.MatcherAssert;
@@ -32,9 +32,7 @@ import org.mockito.Mockito;
 
 /**
  * Test case for {@link ReProfile}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.22
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
@@ -50,14 +48,14 @@ public final class ReProfileTest {
         final String sid = "U12345678";
         Mockito.doReturn(sid).when(sender).getId();
         Mockito.doReturn(sender).when(event).getSender();
-        final Farm farm = new FkFarm();
+        final Farm farm = new PropsFarm();
         final People people = new People(farm).bootstrap();
         final String uid = "yegor256";
         people.invite(uid, "mentor");
         people.link(uid, "slack", sid);
         new ReProfile().react(farm, event, null);
         final ClaimIn claim = new ClaimIn(
-            new Claims(new Pmo(farm)).iterate().iterator().next()
+            new ClaimsItem(new Pmo(farm)).iterate().iterator().next()
         );
         MatcherAssert.assertThat(
             claim.type(),
@@ -79,14 +77,14 @@ public final class ReProfileTest {
         final String sid = "U12345679";
         Mockito.doReturn(sid).when(sender).getId();
         Mockito.doReturn(sender).when(event).getSender();
-        final Farm farm = new FkFarm();
+        final Farm farm = new PropsFarm();
         final People people = new People(farm).bootstrap();
         final String uid = "dmarkov";
         people.invite(uid, "mentor1");
         people.link(uid, "slack", sid);
         new ReProfile().react(farm, event, null);
         final ClaimIn claim = new ClaimIn(
-            new Claims(new Pmo(farm)).iterate().iterator().next()
+            new ClaimsItem(new Pmo(farm)).iterate().iterator().next()
         );
         MatcherAssert.assertThat(
             claim.type(),

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,27 +19,27 @@ package com.zerocracy.pm.qa;
 import com.jcabi.xml.XML;
 import com.zerocracy.Item;
 import com.zerocracy.Par;
-import com.zerocracy.Policy;
 import com.zerocracy.Project;
 import com.zerocracy.SoftException;
 import com.zerocracy.Xocument;
 import com.zerocracy.cash.Cash;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
 import java.io.IOException;
-import java.util.Date;
-import org.cactoos.time.DateAsText;
-import org.cactoos.time.DateOf;
+import java.time.Instant;
+import java.util.List;
+import org.cactoos.iterable.ItemAt;
+import org.cactoos.iterable.Mapped;
+import org.cactoos.scalar.IoCheckedScalar;
+import org.cactoos.text.JoinedText;
 import org.xembly.Directives;
 
 /**
  * QA reviews.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
-@SuppressWarnings("PMD.AvoidDuplicateLiterals")
+@SuppressWarnings({"PMD.AvoidDuplicateLiterals", "PMD.TooManyMethods"})
 public final class Reviews {
 
     /**
@@ -92,7 +92,7 @@ public final class Reviews {
                     .xpath("/reviews")
                     .add("review")
                     .attr("job", job)
-                    .add("requested").set(new DateAsText().asString()).up()
+                    .add("requested").set(Instant.now().toString()).up()
                     .add("inspector").set(inspector).up()
                     .add("performer").set(performer).up()
                     .add("cash").set(cash).up()
@@ -106,11 +106,11 @@ public final class Reviews {
      * Remove review from the list and prepare the payment.
      * @param job The job to remove
      * @param claim The claim
-     * @param good Is quality good and we should pay the bonus?
+     * @param bonus QA bonus in minutes
      * @return New claim
      * @throws IOException If fails
      */
-    public ClaimOut remove(final String job, final boolean good,
+    public ClaimOut remove(final String job, final int bonus,
         final ClaimOut claim) throws IOException {
         if (!this.exists(job)) {
             throw new SoftException(
@@ -129,18 +129,43 @@ public final class Reviews {
             );
         }
         int minutes = Integer.parseInt(review.xpath("minutes/text()").get(0));
-        final Cash bonus = new Cash.S(review.xpath("bonus/text()").get(0));
+        final Cash extra = new Cash.S(review.xpath("bonus/text()").get(0));
         Cash cash = new Cash.S(review.xpath("cash/text()").get(0));
-        if (good) {
-            cash = cash.add(bonus);
-            // @checkstyle MagicNumber (2 lines)
-            // @checkstyle StringLiteralsConcatenationCheck (1 line)
-            minutes += new Policy().get("31.bonus", 5);
+        if (bonus > 0) {
+            cash = cash.add(extra);
+            minutes += bonus;
         }
         return claim
             .param("login", review.xpath("performer/text()").get(0))
             .param("cash", cash)
             .param("minutes", minutes);
+    }
+
+    /**
+     * Bonus for a job.
+     * @param job Order id
+     * @return Bonus cash value
+     * @throws IOException If fails
+     */
+    public Cash bonus(final String job) throws IOException {
+        try (final Item item = this.item()) {
+            return
+                new IoCheckedScalar<>(
+                    new ItemAt<>(
+                        new Mapped<String, Cash>(
+                            Cash.S::new,
+                            new Xocument(item.path()).xpath(
+                                new JoinedText(
+                                    "",
+                                    "/reviews",
+                                    String.format("/review[@job = '%s']", job),
+                                    "/bonus/text()"
+                                ).asString()
+                            )
+                        )
+                    )
+                ).value();
+        }
     }
 
     /**
@@ -170,7 +195,7 @@ public final class Reviews {
      * @return Name of inspector
      * @throws IOException If fails
      */
-    public Date requested(final String job) throws IOException {
+    public Instant requested(final String job) throws IOException {
         if (!this.exists(job)) {
             throw new SoftException(
                 new Par(
@@ -179,11 +204,11 @@ public final class Reviews {
             );
         }
         try (final Item reviews = this.item()) {
-            return new DateOf(
+            return Instant.parse(
                 new Xocument(reviews.path()).xpath(
                     String.format("//review[@job='%s']/requested/text()", job)
                 ).get(0)
-            ).value();
+            );
         }
     }
 
@@ -242,6 +267,34 @@ public final class Reviews {
             return !new Xocument(reviews.path()).nodes(
                 String.format("//review[@job='%s']", job)
             ).isEmpty();
+        }
+    }
+
+    /**
+     * Find jobs to review by inspector.
+     * @param login Login name of inspector
+     * @return List of jobs to review
+     * @throws IOException If fails
+     */
+    public List<String> findByInspector(final String login)
+        throws IOException {
+        try (final Item reviews = this.item()) {
+            return new Xocument(reviews.path()).xpath(
+                String.format(
+                    "/reviews/review[inspector='%s']/@job", login
+                )
+            );
+        }
+    }
+
+    /**
+     * Iterate all jobs under review.
+     * @return List of jobs under review.
+     * @throws IOException If fails
+     */
+    public List<String> iterate() throws IOException {
+        try (final Item reviews = this.item()) {
+            return new Xocument(reviews.path()).xpath("/reviews/review/@job");
         }
     }
 

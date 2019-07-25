@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -22,7 +22,8 @@ import com.zerocracy.Farm;
 import com.zerocracy.Item;
 import com.zerocracy.Par;
 import com.zerocracy.Project;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.tk.RqUser;
 import com.zerocracy.tk.RsParFlash;
 import java.io.IOException;
@@ -40,9 +41,7 @@ import org.takes.rq.multipart.RqMtSmart;
 /**
  * Upload one file.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.20
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class TkUpload implements TkRegex {
@@ -88,7 +87,7 @@ public final class TkUpload implements TkRegex {
             "message", new Par(
                 "File `%s` uploaded manually to %s by @%s"
             ).say(artifact, project.pid(), new RqUser(this.farm, req).value())
-        ).postTo(this.farm);
+        ).postTo(new ClaimsOf(this.farm));
         return new RsForward(
             new RsParFlash(
                 new Par(

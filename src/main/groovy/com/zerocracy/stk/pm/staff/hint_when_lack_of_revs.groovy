@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,7 +21,7 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.staff.Roles
 import com.zerocracy.pmo.Hint
 import java.util.concurrent.TimeUnit
@@ -31,6 +31,9 @@ def exec(Project project, XML xml) {
   new Assume(project, xml).type('Ping hourly')
   ClaimIn claim = new ClaimIn(xml)
   Roles roles = new Roles(project).bootstrap()
+  if (roles.everybody().size() < 10) {
+    return
+  }
   int revs = roles.findByRole('REV').size()
   int devs = roles.findByRole('DEV').size()
   if (revs >= devs) {

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -27,15 +27,14 @@ import com.zerocracy.pmo.Awards;
 import com.zerocracy.pmo.Pmo;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import org.cactoos.matchers.ScalarHasValue;
 import org.hamcrest.MatcherAssert;
 import org.junit.Test;
 
 /**
  * Test case for {@link JobExpired}.
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.22
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle MagicNumberCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
@@ -45,11 +44,11 @@ public final class JobExpiredTest {
     public void sayWhenJobIsExpired() throws IOException {
         final Farm farm = new PropsFarm(new FkFarm());
         final Project pkt = new FkProject();
-        final Orders orders = new Orders(pkt).bootstrap();
+        final Orders orders = new Orders(farm, pkt).bootstrap();
         final String job = "gh:test/test#1";
         new Wbs(pkt).bootstrap().add(job);
         final String performer = "user2241234";
-        orders.assign(job, performer, 0L);
+        orders.assign(job, performer, UUID.randomUUID().toString());
         new Awards(farm, performer).bootstrap()
             .add(pkt, 1300, "gh:none/none#1", "tst");
         MatcherAssert.assertThat(
@@ -68,13 +67,13 @@ public final class JobExpiredTest {
     public void sayWhenJobIsNotExpired() throws IOException {
         final Farm farm = new PropsFarm(new FkFarm());
         final Project pkt = new FkProject();
-        final Orders orders = new Orders(pkt).bootstrap();
+        final Orders orders = new Orders(farm, pkt).bootstrap();
         final String job = "gh:test/test#2";
         new Wbs(pkt).bootstrap().add(job);
         final String performer = "user22234";
-        orders.assign(job, performer, 0L);
+        orders.assign(job, performer, UUID.randomUUID().toString());
         new Awards(farm, performer).bootstrap()
-            .add(pkt, 2500, "gh:none/none#2", "tst2");
+            .add(pkt, 2500, "gh:none/none#2", UUID.randomUUID().toString());
         MatcherAssert.assertThat(
             new JobExpired(
                 new Pmo(farm),

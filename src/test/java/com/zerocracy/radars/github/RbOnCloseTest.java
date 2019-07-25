@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -22,8 +22,9 @@ import com.jcabi.github.Repo;
 import com.jcabi.github.Repos;
 import com.jcabi.github.mock.MkGithub;
 import com.jcabi.github.mock.MkStorage;
-import com.zerocracy.farm.fake.FkFarm;
-import com.zerocracy.pm.Claims;
+import com.zerocracy.Farm;
+import com.zerocracy.claims.ClaimsItem;
+import com.zerocracy.farm.props.PropsFarm;
 import com.zerocracy.pm.scope.Wbs;
 import java.io.IOException;
 import javax.json.Json;
@@ -36,9 +37,7 @@ import org.xembly.Directives;
 
 /**
  * Test case for {@link RbOnClose}.
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.16
+ * @since 1.0
  * @checkstyle LineLength (500 lines)
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
@@ -59,7 +58,7 @@ public final class RbOnCloseTest {
         storage.apply(RbOnCloseTest.closeEvent(issue));
         MatcherAssert.assertThat(
             "issue wasn't closed",
-            new RbOnClose().react(new FkFarm(), github, RbOnCloseTest.json(issue)),
+            new RbOnClose().react(new PropsFarm(), github, RbOnCloseTest.json(issue)),
             Matchers.startsWith("Asked WBS")
         );
     }
@@ -76,13 +75,13 @@ public final class RbOnCloseTest {
         );
         issue.close();
         storage.apply(RbOnCloseTest.closeEvent(issue));
-        final FkFarm farm = new FkFarm();
+        final Farm farm = new PropsFarm();
         final GhProject pkt = new GhProject(farm, repo);
         new Wbs(pkt).bootstrap().add(new Job(issue).toString());
         new RbOnClose().react(farm, github, RbOnCloseTest.json(issue));
         MatcherAssert.assertThat(
             "issue is not delayed",
-            new Claims(pkt).bootstrap().iterate(),
+            new ClaimsItem(pkt).bootstrap().iterate(),
             Matchers.emptyIterable()
         );
     }

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,15 +16,17 @@
  */
 package com.zerocracy.farm;
 
+import com.jcabi.log.Logger;
 import com.jcabi.xml.XML;
 import com.zerocracy.Farm;
 import com.zerocracy.Project;
 import com.zerocracy.SoftException;
 import com.zerocracy.Stakeholder;
+import com.zerocracy.claims.ClaimIn;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.farm.props.Props;
-import com.zerocracy.pm.ClaimIn;
+import com.zerocracy.sentry.SafeSentry;
 import com.zerocracy.tools.TxtUnrecoverableError;
-import io.sentry.Sentry;
 import java.io.IOException;
 import lombok.EqualsAndHashCode;
 import org.cactoos.text.TextOf;
@@ -32,12 +34,19 @@ import org.cactoos.text.TextOf;
 /**
  * Stakeholder that reports about failures and doesn't fail ever.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
+ * @checkstyle CyclomaticComplexityCheck (500 lines)
  */
 @EqualsAndHashCode(of = "identifier")
+@SuppressWarnings(
+    {"PMD.ModifiedCyclomaticComplexity", "PMD.StdCyclomaticComplexity"}
+)
 public final class StkSafe implements Stakeholder {
+
+    /**
+     * Max stacktrace length.
+     */
+    private static final int STACKTRACE_MAX = 8192;
 
     /**
      * Original stakeholder.
@@ -66,29 +75,47 @@ public final class StkSafe implements Stakeholder {
         this.origin = stk;
     }
 
+    // @todo #733:30min Prevent StkSafe from swallowing exceptions generated
+    //  in tests. It was discovered in #733 that StkSafe is treating all
+    //  exceptions requests in the same way: thay're wrapped in an notify
+    //  claim and processed. This causes tests to never fail when throwing
+    //  exceptions: the exception which should break the test is treated like
+    //  a notification and does not breaks it. We should create a way to
+    //  avoid this exception swallowing.
     @Override
     @SuppressWarnings(
         {
             "PMD.AvoidCatchingThrowable",
             "PMD.AvoidRethrowingException",
-            "PMD.CyclomaticComplexity"
+            "PMD.CyclomaticComplexity",
+            "PMD.PrematureDeclaration"
         }
     )
     public void process(final Project project,
         final XML xml) throws IOException {
         final ClaimIn claim = new ClaimIn(xml);
+        final boolean testing = new Props(this.farm).has("//testing");
         try {
             this.origin.process(project, xml);
         } catch (final MismatchException ex) {
             throw ex;
         } catch (final SoftException ex) {
+            if (testing) {
+                Logger.warn(
+                    this,
+                    "Soft error for '%s': %s",
+                    claim.type(), ex.getMessage()
+                );
+            }
             if (claim.hasToken()) {
-                new ClaimIn(xml).reply(ex.getMessage()).postTo(project);
+                claim.reply(ex.getMessage()).postTo(
+                    new ClaimsOf(this.farm, project)
+                );
             } else {
-                Sentry.capture(
+                new SafeSentry(this.farm).capture(
                     new IllegalArgumentException(
                         String.format(
-                            "Claim #%d \"%s\" has no token in %s",
+                            "Claim #%s \"%s\" has no token in %s",
                             claim.cid(), claim.type(), this.identifier
                         ),
                         ex
@@ -99,7 +126,7 @@ public final class StkSafe implements Stakeholder {
         } catch (final Throwable ex) {
             final StringBuilder msg = new StringBuilder(
                 String.format(
-                    "Claim #%d in %s: type=\"%s\", stakeholder=\"%s\"",
+                    "Claim #%s in %s: type=\"%s\", stakeholder=\"%s\"",
                     claim.cid(), project.pid(), claim.type(),
                     this.identifier
                 )
@@ -111,30 +138,50 @@ public final class StkSafe implements Stakeholder {
                 msg.append(String.format(", token=\"%s\"", claim.token()));
             }
             final Props props = new Props(this.farm);
-            if (props.has("//testing")) {
+            if (testing) {
                 throw new IllegalStateException(ex);
             }
-            claim.copy()
-                .type("Error")
-                .param("origin_id", claim.cid())
-                .param("origin_type", claim.type())
-                .param("message", msg.toString())
-                .param("stacktrace", new TextOf(ex).asString())
-                .postTo(project);
-            Sentry.capture(ex);
+            if (!claim.isError()) {
+                claim.copy()
+                    .type("Error")
+                    .param("origin_id", claim.cid())
+                    .param("origin_type", claim.type())
+                    .param("message", msg.toString())
+                    .param("stacktrace", StkSafe.stacktrace(ex))
+                    .postTo(new ClaimsOf(this.farm, project));
+            }
+            new SafeSentry(this.farm).capture(ex);
             if (claim.hasToken() && !claim.type().startsWith("Notify")) {
                 claim.reply(
                     new TxtUnrecoverableError(
                         ex, props,
                         String.format(
                             // @checkstyle LineLength (1 line)
-                            "CID: [%d](https://www.0crat.com/%s/%1$d), Type: \"%s\", Author: \"%s\"",
-                            claim.cid(), project.pid(), claim.type(),
-                            claim.author()
+                            "CID: [%s](https://www.0crat.com/footprint/%s/%s), Type: \"%s\"",
+                            claim.cid(), project.pid(), claim.cid(),
+                            claim.type()
                         )
                     ).asString()
-                ).postTo(project);
+                ).postTo(new ClaimsOf(this.farm, project));
             }
         }
+    }
+
+    /**
+     * Stacktrace for error.
+     * @param exception Error
+     * @return Stacktrace
+     * @throws IOException If fails
+     */
+    private static String stacktrace(final Throwable exception)
+        throws IOException {
+        final String error = new TextOf(exception).asString();
+        final String stacktrace;
+        if (error.length() > StkSafe.STACKTRACE_MAX) {
+            stacktrace = error.substring(0, StkSafe.STACKTRACE_MAX);
+        } else {
+            stacktrace = error;
+        }
+        return stacktrace;
     }
 }

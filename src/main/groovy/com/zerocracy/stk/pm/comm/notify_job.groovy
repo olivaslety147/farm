@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,9 +17,11 @@
 package com.zerocracy.stk.pm.comm
 
 import com.jcabi.xml.XML
+import com.zerocracy.Farm
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
 import com.zerocracy.Project
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 
 // The token must look like: job;gh:zerocracy/farm#123
 
@@ -37,17 +39,18 @@ def exec(Project project, XML xml) {
       "Something is wrong with this token: ${claim.token()}"
     )
   }
+  Farm farm = binding.variables.farm
   String[] slices = parts[1].split(':')
   if (slices[0] == 'gh') {
     String[] coords = slices[1].split('#')
     claim.copy()
       .type('Notify in GitHub')
       .token("github;${coords[0]};${coords[1]}")
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   } else if (parts[1] == 'none') {
     claim.copy()
       .type('Notify project')
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   } else {
     throw new IllegalStateException(
       String.format(

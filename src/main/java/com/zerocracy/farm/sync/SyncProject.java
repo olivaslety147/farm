@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -27,10 +27,8 @@ import lombok.EqualsAndHashCode;
 /**
  * Sync project.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
- * @since 0.1
+ * @since 1.0
  */
 @EqualsAndHashCode(of = "origin")
 final class SyncProject implements Project {
@@ -41,9 +39,9 @@ final class SyncProject implements Project {
     private final Project origin;
 
     /**
-     * Lock.
+     * Locks.
      */
-    private final Lock lock;
+    private final Locks locks;
 
     /**
      * Terminator.
@@ -53,12 +51,12 @@ final class SyncProject implements Project {
     /**
      * Ctor.
      * @param pkt Project
-     * @param lck Lock
+     * @param lcks Locks
      * @param tmr Terminator
      */
-    SyncProject(final Project pkt, final Lock lck, final Terminator tmr) {
+    SyncProject(final Project pkt, final Locks lcks, final Terminator tmr) {
         this.origin = pkt;
-        this.lock = lck;
+        this.locks = lcks;
         this.terminator = tmr;
     }
 
@@ -70,15 +68,16 @@ final class SyncProject implements Project {
     @Override
     public Item acq(final String file) throws IOException {
         final long start = System.currentTimeMillis();
+        final Lock lock = this.locks.lock(this, file);
         try {
             // @checkstyle MagicNumber (1 line)
-            if (!this.lock.tryLock(1L, TimeUnit.MINUTES)) {
+            if (!lock.tryLock(2L, TimeUnit.MINUTES)) {
                 throw new IllegalStateException(
                     Logger.format(
                         "Failed to acquire \"%s\" in \"%s\" in %[ms]s: %s",
                         file, this.origin.pid(),
                         System.currentTimeMillis() - start,
-                        this.lock
+                        lock
                     )
                 );
             }
@@ -94,7 +93,11 @@ final class SyncProject implements Project {
                 ex
             );
         }
-        this.terminator.submit(this, file, this.lock);
-        return new SyncItem(this.origin.acq(file), this.lock);
+        this.terminator.submit(this, file, lock);
+        return new WarnItem(
+            String.format("%s/%s", this.pid(), file),
+            new SyncItem(this.origin.acq(file), lock),
+            System.nanoTime()
+        );
     }
 }

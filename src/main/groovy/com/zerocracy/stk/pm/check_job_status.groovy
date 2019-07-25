@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,8 +21,9 @@ import com.jcabi.xml.XML
 import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.cost.Boosts
 import com.zerocracy.pm.cost.Estimates
 import com.zerocracy.pm.cost.Rates
@@ -34,6 +35,9 @@ import com.zerocracy.pm.scope.Wbs
 import com.zerocracy.pm.staff.Bans
 import com.zerocracy.pmo.People
 import org.cactoos.list.ListOf
+
+import java.time.Duration
+import java.time.Instant
 
 def exec(Project project, XML xml) {
   new Assume(project, xml).notPmo()
@@ -55,7 +59,7 @@ def exec(Project project, XML xml) {
       ).say(job)
     )
     items.add(new Par('The role is %s').say(wbs.role(job)))
-    Orders orders = new Orders(project).bootstrap()
+    Orders orders = new Orders(farm, project).bootstrap()
     if (orders.assigned(job)) {
       String performer = orders.performer(job)
       items.add(
@@ -72,7 +76,7 @@ def exec(Project project, XML xml) {
         items.add(new Par('@%s is on vacation!').say(performer))
       }
       Vesting vesting = new Vesting(project).bootstrap()
-      Estimates estimates = new Estimates(project).bootstrap()
+      Estimates estimates = new Estimates(farm, project).bootstrap()
       if (estimates.exists(job)) {
         items.add(
           new Par(
@@ -101,7 +105,7 @@ def exec(Project project, XML xml) {
           ).say()
         )
       }
-      Impediments impediments = new Impediments(project).bootstrap()
+      Impediments impediments = new Impediments(farm, project).bootstrap()
       if (new ListOf<>(impediments.jobs()).contains(job)) {
         items.add(
           new Par(
@@ -118,7 +122,7 @@ def exec(Project project, XML xml) {
     } else {
       items.add(new Par('The job is not assigned to anyone').say())
     }
-    Boosts boosts = new Boosts(project).bootstrap()
+    Boosts boosts = new Boosts(farm, project).bootstrap()
     if (orders.assigned(job)) {
       items.add(
         new Par(
@@ -151,7 +155,7 @@ def exec(Project project, XML xml) {
     items.add(
       new Par(
         'The job is waiting quality review verdict by @%s for %[ms]s'
-      ).say(inspector, System.currentTimeMillis() - reviews.requested(job).time)
+      ).say(inspector, Duration.between(reviews.requested(job), Instant.now()).toMillis())
     )
     items.add(
       new Par(
@@ -172,5 +176,5 @@ def exec(Project project, XML xml) {
     new Par(
       'This is what I know about this job in %s, as in §32:'
     ).say(project.pid()) + '\n\n  * ' + items.join('\n  * ')
-  ).postTo(project)
+  ).postTo(new ClaimsOf(farm, project))
 }

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -25,9 +25,7 @@ import lombok.EqualsAndHashCode;
 /**
  * PMO project.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  */
 @EqualsAndHashCode(of = "origin")
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
@@ -44,6 +42,7 @@ final class StrictProject implements Project {
             "(claims\\.xml)",
             "(roles\\.xml)",
             "(catalog\\.xml)",
+            "(ledger\\.xml)",
             "(bots\\.xml)",
             "(people\\.xml)",
             "(rfps\\.xml)",
@@ -53,8 +52,14 @@ final class StrictProject implements Project {
             "(agenda/[a-zA-Z0-9-]+\\.xml)",
             "(projects/[a-zA-Z0-9-]+\\.xml)",
             "(blanks/[a-zA-Z0-9-]+\\.xml)",
+            "(negligence/[a-zA-Z0-9-]+\\.xml)",
             "(speed/[a-zA-Z0-9-]+\\.xml)",
-            "(verbosity/[a-zA-Z0-9-]+\\.xml)"
+            "(options/[a-zA-Z0-9-]+\\.xml)",
+            "(verbosity/[a-zA-Z0-9-]+\\.xml)",
+            "(resumes\\.xml)",
+            "(test)",
+            "(test/heap)",
+            "(test/bucket)"
         )
     );
 
@@ -84,7 +89,10 @@ final class StrictProject implements Project {
             "(milestones\\.xml)",
             "(impediments\\.xml)",
             "(boosts\\.xml)",
-            "(reminders\\.xml)"
+            "(reminders\\.xml)",
+            "(releases\\.xml)",
+            "(options\\.xml)",
+            "(applications\\.xml)"
         )
     );
 
@@ -127,5 +135,4 @@ final class StrictProject implements Project {
         }
         return this.origin.acq(file);
     }
-
 }

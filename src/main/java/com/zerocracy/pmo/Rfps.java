@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -23,7 +23,7 @@ import com.zerocracy.Item;
 import com.zerocracy.Par;
 import com.zerocracy.Xocument;
 import java.io.IOException;
-import java.util.Date;
+import java.time.Instant;
 import java.util.Iterator;
 import org.cactoos.iterable.Mapped;
 import org.cactoos.text.JoinedText;
@@ -33,11 +33,9 @@ import org.xembly.Directive;
 import org.xembly.Directives;
 
 /**
- * All RFPs.
+ * All RFPs (requests for proposal).
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.20
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings({"PMD.AvoidDuplicateLiterals", "PMD.TooManyMethods"})
@@ -295,7 +293,7 @@ public final class Rfps {
      * @return Rfp ids
      * @throws IOException If fails
      */
-    public Iterable<Integer> olderThan(final Date date) throws IOException {
+    public Iterable<Integer> olderThan(final Instant date) throws IOException {
         try (final Item item = this.item()) {
             return new Mapped<>(
                 Integer::parseInt,
@@ -304,7 +302,7 @@ public final class Rfps {
                         "",
                         "/rfps/rfp[xs:dateTime(created) < ",
                         "xs:dateTime('",
-                        new DateAsText(date).asString(),
+                        date.toString(),
                         "')]/@id"
                     ).asString()
                 )

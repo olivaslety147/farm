@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,6 +20,8 @@ import com.jcabi.log.Logger;
 import com.zerocracy.Farm;
 import com.zerocracy.farm.props.Props;
 import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.cactoos.Scalar;
 import org.cactoos.func.SolidFunc;
 import org.cactoos.func.UncheckedFunc;
@@ -30,9 +32,7 @@ import twitter4j.auth.AccessToken;
 
 /**
  * Twitter client.
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.21
+ * @since 1.0
  */
 public final class ExtTwitter implements Scalar<ExtTwitter.Tweets> {
 
@@ -108,6 +108,17 @@ public final class ExtTwitter implements Scalar<ExtTwitter.Tweets> {
     }
 
     /**
+     * Tweets that can retrieve tweeted messages.
+     */
+    public interface Retrievable extends Tweets {
+        /**
+         * Get list of tweets.
+         * @return List of tweets
+         */
+        List<String> tweets();
+    }
+
+    /**
      * Twitter api tweets.
      */
     private static final class ProdTweets implements ExtTwitter.Tweets {
@@ -136,11 +147,22 @@ public final class ExtTwitter implements Scalar<ExtTwitter.Tweets> {
     /**
      * Test tweets.
      */
-    private static final class MkTweets implements ExtTwitter.Tweets {
+    private static final class MkTweets implements ExtTwitter.Retrievable {
+        /**
+         * Published tweets.
+         */
+        private final List<String> messages = new CopyOnWriteArrayList<>();
+
         @Override
         public long publish(final String text) {
+            this.messages.add(text);
             Logger.debug(this, "tweet: %s", text);
             return 0L;
+        }
+
+        @Override
+        public List<String> tweets() {
+            return this.messages;
         }
     }
 }

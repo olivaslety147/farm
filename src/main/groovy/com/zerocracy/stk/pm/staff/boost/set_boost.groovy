@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,20 +17,23 @@
 package com.zerocracy.stk.pm.staff.boost
 
 import com.jcabi.xml.XML
+import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.SoftException
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.cost.Boosts
 
 def exec(Project project, XML xml) {
   new Assume(project, xml).notPmo()
   new Assume(project, xml).type('Set boost')
+  new Assume(project, xml).roles('PO', 'ARC')
   ClaimIn claim = new ClaimIn(xml)
   int factor = Integer.valueOf(claim.param('factor').replaceAll('x$', ''))
   String job = claim.param('job')
-  Boosts boosts = new Boosts(project).bootstrap()
+  Boosts boosts = new Boosts(farm, project).bootstrap()
   if (boosts.factor(job) == factor) {
     throw new SoftException(
       new Par(
@@ -39,7 +42,8 @@ def exec(Project project, XML xml) {
     )
   }
   boosts.boost(job, factor)
+  Farm farm = binding.variables.farm
   claim.reply(
     new Par('Boost %dx was set for %s').say(factor, job)
-  ).postTo(project)
+  ).postTo(new ClaimsOf(farm, project))
 }

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -23,15 +23,13 @@ import com.jcabi.github.Repo;
 import com.jcabi.github.Repos;
 import com.jcabi.github.mock.MkGithub;
 import com.zerocracy.Farm;
-import com.zerocracy.farm.fake.FkFarm;
+import com.zerocracy.farm.props.PropsFarm;
 import com.zerocracy.pmo.People;
 import org.junit.Test;
 
 /**
  * Test case for {@link ReQuestion}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.10
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  */
 public final class ReQuestionTest {
@@ -47,7 +45,7 @@ public final class ReQuestionTest {
             repo.issues().create("first title", "")
         );
         final Comment comment = issue.comments().post("@0crat hello");
-        final Farm farm = new FkFarm();
+        final Farm farm = new PropsFarm();
         new People(farm).bootstrap().invite(uid, "yegor256");
         new ReQuestion().react(farm, new Comment.Smart(comment));
     }

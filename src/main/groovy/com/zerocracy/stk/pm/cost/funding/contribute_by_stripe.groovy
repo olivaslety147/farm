@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,16 +21,28 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.cash.Cash
+import com.zerocracy.claims.ClaimIn
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
 import com.zerocracy.pm.cost.Ledger
+import com.zerocracy.pmo.Catalog
 
+/**
+ * This stakeholder process user Stripe contributions: it adds funds
+ * to the project and notify project in Slack about contribution.
+ * Everyone can donate to free and public open-source projects
+ * (see {@link com.zerocracy.tk.project.TkContrib}
+ * via 'Contribute badges' ({@link com.zerocracy.tk.project.TkContribBadge}).
+ * @param project Contributed project
+ * @param xml Claim
+ */
 def exec(Project project, XML xml) {
   new Assume(project, xml).notPmo()
   new Assume(project, xml).type('Contributed by Stripe')
   ClaimIn claim = new ClaimIn(xml)
   Cash amount = new Cash.S(claim.param('amount'))
-  new Ledger(project).bootstrap().add(
+  Farm farm = binding.variables.farm
+  new Ledger(farm, project).bootstrap().add(
     new Ledger.Transaction(
       amount,
       'assets', 'cash',
@@ -47,18 +59,24 @@ def exec(Project project, XML xml) {
         'it was a free contribution of @%s, as in §50'
       ).say(project.pid(), amount, claim.author())
     )
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
   claim.copy().type('Notify PMO').param(
     'message', new Par(
       'We just funded %s for %s via Stripe by @%s'
     ).say(project.pid(), amount, claim.author())
-  ).postTo(project)
-  Farm farm = binding.variables.farm
+  ).postTo(new ClaimsOf(farm, project))
   claim.copy().type('Tweet').param(
     'par', new Par(
       farm,
-      'The project %s received a monetary contribution of %s from @%s;',
-      'many thanks for your support!'
+      'The project %s received a monetary contribution of %s',
+      'from https://github.com/%s; many thanks for your support!'
     ).say(project.pid(), amount, claim.author())
-  ).postTo(project)
+  ).postTo(new ClaimsOf(farm, project))
+  Catalog catalog = new Catalog(farm).bootstrap()
+  if (catalog.sandbox(project.pid())) {
+    claim.copy().type('Send zold')
+      .param('recipient', claim.author())
+      .param('reason', 'contribution reward')
+      .postTo(new ClaimsOf(farm, project))
+  }
 }

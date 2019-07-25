@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,10 +21,12 @@ import com.jcabi.xml.XML
 import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
+import com.zerocracy.claims.ClaimIn
+import com.zerocracy.claims.ClaimOut
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.entry.ExtGithub
 import com.zerocracy.farm.Assume
 import com.zerocracy.farm.props.Props
-import com.zerocracy.pm.ClaimIn
 import com.zerocracy.pmo.People
 
 import java.util.concurrent.TimeUnit
@@ -33,20 +35,12 @@ def exec(Project pmo, XML xml) {
   new Assume(pmo, xml).isPmo()
   new Assume(pmo, xml).type('Ping daily')
   Farm farm = binding.variables.farm
-  if (new Props(farm).has('//testing')) {
-    /**
-     * @todo #835:30min At moment user.exists() throws NullPointerException
-     *  for tests, see https://github.com/jcabi/jcabi-github/issues/1370
-     *  After jcabi bug fix this condition should be removed and test
-     *  assertion in `remove_stale_users/_after.groovy` should be uncommented.
-     */
-    return
-  }
   People people = new People(farm).bootstrap()
   ClaimIn claim = new ClaimIn(xml)
   people.iterate().each { uid ->
     User.Smart user = new User.Smart(new ExtGithub(farm).value().users().get(uid))
-    if (!user.exists()) {
+    boolean exists = user.exists()
+    if (!exists) {
       claim.copy()
         .type('Notify user')
         .token("user;$uid")
@@ -56,12 +50,14 @@ def exec(Project pmo, XML xml) {
             'We can\'t find your Github account: %s, ',
             'your profile will be deleted in %d hours.'
           ).say(uid, 12)
-      ).postTo(pmo)
-      claim.copy()
+      ).postTo(new ClaimsOf(farm))
+      ClaimOut delete = claim.copy()
         .type('Delete user')
-        .until(TimeUnit.HOURS.toSeconds(12))
         .param('login', uid)
-        .postTo(pmo)
+      if (!new Props(farm).has('//testing')) {
+        delete.until(TimeUnit.HOURS.toSeconds(12))
+      }
+        delete.postTo(new ClaimsOf(farm))
     }
   }
 }

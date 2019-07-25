@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,7 +20,8 @@ package com.zerocracy.radars.github;
 import com.jcabi.github.Github;
 import com.jcabi.github.Issue;
 import com.zerocracy.Farm;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import java.io.IOException;
 import javax.json.JsonObject;
 import org.cactoos.text.FormattedText;
@@ -28,9 +29,8 @@ import org.cactoos.text.FormattedText;
 /**
  * Add issue to WBS if it is a pull request.
  *
- * @author Carlos Miranda (miranda.cma@gmail.com)
- * @version $Id$
- * @since 0.15.4
+ * @since 1.0
+ * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class RbOnPullRequest implements Rebound {
 
@@ -47,7 +47,7 @@ public final class RbOnPullRequest implements Rebound {
                 .token(new TokenOfIssue(issue))
                 .param("job", new Job(issue))
                 .param("role", "REV")
-                .postTo(new GhProject(farm, issue.repo()));
+                .postTo(new ClaimsOf(farm, new GhProject(farm, issue.repo())));
             answer = new FormattedText(
                 "Pull request #%d added to WBS", issue.number()
             ).asString();

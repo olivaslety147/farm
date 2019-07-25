@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,8 +17,11 @@
 package com.zerocracy.pm.in;
 
 import com.zerocracy.Project;
+import com.zerocracy.SoftException;
 import com.zerocracy.farm.fake.FkProject;
+import com.zerocracy.farm.props.PropsFarm;
 import com.zerocracy.pm.scope.Wbs;
+import java.util.UUID;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Test;
@@ -26,20 +29,20 @@ import org.junit.Test;
 /**
  * Test case for {@link Impediments}.
  *
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.19
- *  @checkstyle JavadocMethodCheck (500 lines)
+ * @since 1.0
+ * @checkstyle JavadocMethodCheck (500 lines)
  */
 public final class ImpedimentsTest {
 
     @Test
     public void registerImpediment() throws Exception {
         final Project project = new FkProject();
-        final Impediments imp = new Impediments(project).bootstrap();
+        final Impediments imp = new Impediments(new PropsFarm(), project)
+            .bootstrap();
         final String job = "gh:test/test#1";
         new Wbs(project).bootstrap().add(job);
-        new Orders(project).bootstrap().assign(job, "yegor256", 0L);
+        new Orders(new PropsFarm(), project).bootstrap()
+            .assign(job, "yegor256", UUID.randomUUID().toString());
         imp.register(job, "test");
         MatcherAssert.assertThat(
             imp.jobs(),
@@ -49,5 +52,41 @@ public final class ImpedimentsTest {
             imp.exists(job),
             Matchers.is(true)
         );
+    }
+
+    @Test
+    public void removesImpediment() throws Exception {
+        final Project project = new FkProject();
+        final PropsFarm farm = new PropsFarm();
+        final Impediments imp = new Impediments(farm, project).bootstrap();
+        final String job = "gh:test/test#2";
+        new Wbs(project).bootstrap().add(job);
+        new Orders(farm, project).bootstrap()
+            .assign(job, "amihaiemil", UUID.randomUUID().toString());
+        imp.register(job, "reason");
+        MatcherAssert.assertThat(
+            imp.jobs(),
+            Matchers.contains(job)
+        );
+        MatcherAssert.assertThat(
+            imp.exists(job),
+            Matchers.is(true)
+        );
+        imp.remove(job);
+        MatcherAssert.assertThat(
+            imp.jobs(),
+            Matchers.not(Matchers.contains(job))
+        );
+        MatcherAssert.assertThat(
+            imp.exists(job),
+            Matchers.is(false)
+        );
+    }
+
+    @Test(expected = SoftException.class)
+    public void removesMissingImpediment() throws Exception {
+        final Impediments imp =
+            new Impediments(new PropsFarm(), new FkProject()).bootstrap();
+        imp.remove("gh:test/test#8");
     }
 }

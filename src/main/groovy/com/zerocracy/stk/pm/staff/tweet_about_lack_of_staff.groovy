@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,7 +21,7 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.in.Orders
 import com.zerocracy.pm.scope.Wbs
 import com.zerocracy.pmo.Catalog
@@ -37,7 +37,7 @@ def exec(Project project, XML xml) {
   }
   ClaimIn claim = new ClaimIn(xml)
   Wbs wbs = new Wbs(project).bootstrap()
-  Orders orders = new Orders(project).bootstrap()
+  Orders orders = new Orders(farm, project).bootstrap()
   int pending = 0
   wbs.iterate().each { job ->
     Date created = wbs.created(job)
@@ -54,7 +54,7 @@ def exec(Project project, XML xml) {
   }
   new Hint(
     farm,
-    (int) TimeUnit.DAYS.toSeconds(5L),
+    (int) TimeUnit.DAYS.toSeconds(10L),
     claim.copy()
       .type('Tweet')
       .token("project;${project.pid()}")

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,7 +19,8 @@ package com.zerocracy.tk.rfp;
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
 import com.zerocracy.cash.Cash;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.pmo.Rfps;
 import com.zerocracy.pmo.recharge.Stripe;
 import com.zerocracy.tk.RqUser;
@@ -36,9 +37,7 @@ import org.takes.rq.form.RqFormSmart;
 /**
  * Pay for RFP.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.20
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
@@ -93,7 +92,7 @@ public final class TkPrepay implements Take {
                 "RFP #%d has been paid by @%s: %s;",
                 "we will notify you when they submit the statement of work"
             ).say(rid, user, email)
-        ).postTo(this.farm);
+        ).postTo(new ClaimsOf(this.farm));
         return new RsForward(
             new RsParFlash(
                 new Par("The RFP #%d has been paid, thanks").say(rid),

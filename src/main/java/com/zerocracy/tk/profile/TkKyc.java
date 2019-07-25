@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,7 +18,8 @@ package com.zerocracy.tk.profile;
 
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.pm.staff.Roles;
 import com.zerocracy.pmo.People;
 import com.zerocracy.pmo.Pmo;
@@ -35,9 +36,7 @@ import org.takes.rq.form.RqFormSmart;
 /**
  * Kyc explicit identification.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.20
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
@@ -76,12 +75,12 @@ public final class TkKyc implements TkRegex {
             .param("details", details)
             .param("system", "manual")
             .author(user)
-            .postTo(this.farm);
+            .postTo(new ClaimsOf(this.farm));
         new ClaimOut().type("Notify PMO").param(
             "message", new Par(
                 "We just identified @%s as `%s` manually"
             ).say(login, details)
-        ).postTo(this.farm);
+        ).postTo(new ClaimsOf(this.farm));
         new ClaimOut()
             .type("Notify user")
             .token(String.format("user;%s", login))
@@ -89,7 +88,7 @@ public final class TkKyc implements TkRegex {
                 "message",
                 new Par("We just identified you as `%s`").say(details)
             )
-            .postTo(this.farm);
+            .postTo(new ClaimsOf(this.farm));
         return new RsForward(
             new RsParFlash(
                 new Par(

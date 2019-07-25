@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -23,9 +23,10 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.SoftException
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.entry.ExtGithub
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.scope.Wbs
 import com.zerocracy.pm.staff.Roles
 import com.zerocracy.radars.github.Job
@@ -73,9 +74,9 @@ def exec(Project project, XML xml) {
   wbs.role(job, role)
   claim.reply(
     new Par('Job %s is now in scope, role is %s').say(job, role)
-  ).postTo(project)
+  ).postTo(new ClaimsOf(farm, project))
   claim.copy()
     .type('Job was added to WBS')
     .param('role', role)
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
 }

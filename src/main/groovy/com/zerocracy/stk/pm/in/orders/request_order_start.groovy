@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,31 +16,58 @@
  */
 package com.zerocracy.stk.pm.in.orders
 
+import com.jcabi.github.Issue
 import com.jcabi.xml.XML
+import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.SoftException
+import com.zerocracy.claims.ClaimIn
+import com.zerocracy.entry.ClaimsOf
+import com.zerocracy.entry.ExtGithub
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
 import com.zerocracy.pm.in.Orders
 import com.zerocracy.pm.scope.Wbs
+import com.zerocracy.radars.github.Job
 
 def exec(Project project, XML xml) {
   new Assume(project, xml).notPmo()
   new Assume(project, xml).type('Request order start')
   new Assume(project, xml).roles('ARC', 'PO')
+
+  Farm farm = binding.variables.farm
   ClaimIn claim = new ClaimIn(xml)
   String login = claim.param('login')
   String job = claim.param('job')
+  if (job.startsWith('gh:')) {
+    Issue issue = new Issue.Smart(new Job.Issue(new ExtGithub(farm).value(), job))
+    if (!issue.open) {
+      throw new SoftException(
+        new Par(farm, 'Job %s is closed, can\'t start order').say(job)
+      )
+    }
+  }
+
   Wbs wbs = new Wbs(project).bootstrap()
   if (!wbs.exists(job)) {
+    String role = 'DEV'
+    if (claim.hasParam('role')) {
+      role = claim.param('role')
+    }
+    if (job.startsWith('gh:')) {
+      Issue issue = new Issue.Smart(new Job.Issue(new ExtGithub(farm).value(), job))
+      if (issue.pull) {
+        role = 'REV'
+      }
+    }
     wbs.add(job)
+    wbs.role(job, role)
     claim.copy()
       .type('Job was added to WBS')
       .param('reason', 'Order start requested, but WBS is empty')
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   }
-  Orders orders = new Orders(project).bootstrap()
+  Orders orders = new Orders(farm, project).bootstrap()
   if (orders.assigned(job)) {
     String performer = orders.performer(job)
     if (login == performer) {
@@ -54,7 +81,7 @@ def exec(Project project, XML xml) {
     claim.copy()
       .type('Order was canceled')
       .param('login', performer)
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   }
   claim.copy()
     .type('Start order')
@@ -62,5 +89,5 @@ def exec(Project project, XML xml) {
     .param('login', login)
     .param('manual', true)
     .param('reason', claim.cid())
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
 }

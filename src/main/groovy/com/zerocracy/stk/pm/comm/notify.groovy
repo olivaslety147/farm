@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,34 +18,54 @@ package com.zerocracy.stk.pm.comm
 
 import com.jcabi.xml.XML
 import com.zerocracy.Farm
-import com.zerocracy.farm.Assume
 import com.zerocracy.Project
-import com.zerocracy.pm.ClaimIn
-
+import com.zerocracy.claims.MsgPriority
+import com.zerocracy.entry.ClaimsOf
+import com.zerocracy.farm.Assume
+import com.zerocracy.claims.ClaimIn
+/**
+ * Stakeholder for notifications. It can understand what channel
+ * to use to notify by token (claim parameter)
+ * and produce a more concrete notification claim.
+ *
+ * @param project Any project
+ * @param xml Claim
+ * @todo #1071:30min Let's allow notification via Viber. If we receive a Notify
+ *  claim with a 'viber' prefixed token, we copy the claim to a new claim,
+ *  "Notify in Viber". Then, create a stakeholder that will handle the claim
+ *  and send the actual message to the user. Also create a mock/fake VbBot
+ *  implementation that we can use for stakeholder testing (may require
+ *  extracting an interface for VbBot).
+ */
 def exec(Project project, XML xml) {
   new Assume(project, xml).type('Notify')
   ClaimIn claim = new ClaimIn(xml)
   String[] parts = claim.token().split(';', 2)
+  Farm farm = binding.variables.farm
   if (parts[0] == 'slack') {
     claim.copy()
       .type('Notify in Slack')
-      .postTo(project)
+      .param('priority', MsgPriority.HIGH)
+      .postTo(new ClaimsOf(farm, project))
   } else if (parts[0] == 'telegram') {
     claim.copy()
       .type('Notify in Telegram')
-      .postTo(project)
+      .param('priority', MsgPriority.HIGH)
+      .postTo(new ClaimsOf(farm, project))
   } else if (parts[0] == 'github') {
     claim.copy()
       .type('Notify in GitHub')
-      .postTo(project)
+      .param('priority', MsgPriority.HIGH)
+      .postTo(new ClaimsOf(farm, project))
   } else if (parts[0] == 'job') {
     claim.copy()
       .type('Notify job')
-      .postTo(project)
+      .param('priority', MsgPriority.HIGH)
+      .postTo(new ClaimsOf(farm, project))
   } else if (parts[0] == 'test') {
     claim.copy()
       .type('Notify test')
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   } else if (parts[0] == 'project') {
     String pid = parts[1]
     if (project.pid() != 'PMO' && pid != project.pid()) {
@@ -56,10 +76,10 @@ def exec(Project project, XML xml) {
         )
       )
     }
-    Farm farm = binding.variables.farm
+    Project notify = farm.find("@id='${pid}'")[0]
     claim.copy()
       .type('Notify project')
-      .postTo(farm.find("@id='${pid}'")[0])
+      .postTo(new ClaimsOf(farm, notify))
   } else {
     throw new IllegalStateException(
       String.format(

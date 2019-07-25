@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,12 +18,13 @@ package com.zerocracy.tk.project.reports;
 
 import com.jcabi.xml.XML;
 import com.zerocracy.Project;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.claims.ClaimsItem;
+import com.zerocracy.claims.Footprint;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.farm.fake.FkProject;
 import com.zerocracy.farm.props.PropsFarm;
-import com.zerocracy.pm.ClaimOut;
-import com.zerocracy.pm.Claims;
-import com.zerocracy.pm.Footprint;
-import java.util.Date;
+import java.time.Instant;
 import org.bson.Document;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
@@ -31,9 +32,7 @@ import org.junit.Test;
 
 /**
  * Test case for {@link OrderChampions}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.18
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
@@ -45,15 +44,15 @@ public final class OrderChampionsTest {
         new ClaimOut()
             .type("Order was given")
             .param("login", "yegor256")
-            .postTo(pkt);
-        final XML xml = new Claims(pkt).iterate().iterator().next();
+            .postTo(new ClaimsOf(new PropsFarm(), pkt));
+        final XML xml = new ClaimsItem(pkt).iterate().iterator().next();
         try (final Footprint footprint = new Footprint(new PropsFarm(), pkt)) {
-            footprint.open(xml);
+            footprint.open(xml, "test");
             final Iterable<Document> docs = footprint.collection().aggregate(
                 new OrderChampions().bson(
                     pkt,
-                    new Date(0L),
-                    new Date()
+                    Instant.ofEpochMilli(0L),
+                    Instant.now()
                 )
             );
             MatcherAssert.assertThat(docs, Matchers.iterableWithSize(1));

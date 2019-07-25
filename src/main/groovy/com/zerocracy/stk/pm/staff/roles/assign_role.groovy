@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,16 +16,22 @@
  */
 package com.zerocracy.stk.pm.staff.roles
 
+import com.jcabi.github.Coordinates
+import com.jcabi.github.Github
+import com.jcabi.github.Repo
 import com.jcabi.xml.XML
 import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.SoftException
 import com.zerocracy.cash.Cash
+import com.zerocracy.entry.ClaimsOf
+import com.zerocracy.entry.ExtGithub
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.cost.Rates
 import com.zerocracy.pm.staff.Roles
+import com.zerocracy.pmo.Catalog
 import com.zerocracy.pmo.People
 
 def exec(Project project, XML xml) {
@@ -51,6 +57,18 @@ def exec(Project project, XML xml) {
       ).say(login)
     )
   }
+  Github github = new ExtGithub(farm).value()
+  for (String link: new Catalog(farm).links(project.pid(), 'github')) {
+    Repo.Smart repo = new Repo.Smart(github.repos().get(new Coordinates.Simple(link)))
+    if (repo.private && !repo.collaborators().isCollaborator(login)) {
+      throw new SoftException(
+        new Par(
+          '@%s doesn\'t have an access in your repositories,',
+          'we won\'t be able to assign tasks'
+        ).say(login)
+      )
+    }
+  }
   Roles roles = new Roles(project).bootstrap()
   Rates rates = new Rates(project).bootstrap()
   String msg
@@ -59,22 +77,30 @@ def exec(Project project, XML xml) {
       'Role %s was already assigned to @%s; '
     ).say(role, login)
   } else {
+    String text = 'Role %s was successfully assigned to @%s, see [full list](/a/%s?a=pm/staff/roles) of roles; '
+    if (role == 'DEV' && !roles.hasRole(login, 'ARC')) {
+      claim.copy()
+        .type('Assign Role')
+        .param('role', 'REV')
+        .postTo(new ClaimsOf(farm, project))
+    } else if (role == 'REV') {
+        text = text + 'If you don\'t want this user as \'REV\', use `resign REV` command; '
+    }
     roles.assign(login, role)
     msg = new Par(
-      'Role %s was successfully assigned to @%s,',
-      'see [full list](/a/%s?a=pm/staff/roles) of roles; '
+        text
     ).say(role, login, project.pid())
     claim.copy()
       .type('Role was assigned')
       .param('role', role)
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   }
   if (claim.hasParam('rate')) {
     Cash rate = new Cash.S(claim.param('rate'))
     claim.copy()
       .type('Change user rate')
       .param('rate', rate)
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   } else {
     if (rates.exists(login)) {
       msg += new Par(
@@ -96,7 +122,7 @@ def exec(Project project, XML xml) {
     claim.copy()
       .type('Change user vesting rate')
       .param('rate', rate)
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   }
-  claim.reply(msg).postTo(project)
+  claim.reply(msg).postTo(new ClaimsOf(farm, project))
 }

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,15 +16,18 @@
  */
 package com.zerocracy.stk.pm.staff.milestones
 
+
 import com.jcabi.xml.XML
-import com.zerocracy.farm.Assume
 import com.zerocracy.Project
+import com.zerocracy.claims.ClaimIn
+import com.zerocracy.farm.Assume
+import com.zerocracy.pm.time.Precedences
 
 def exec(Project project, XML xml) {
-  new Assume(project, xml).notPmo()
-/**
- * @todo #166:30min let's implement this stakeholder. It will update
- *  precedences.xml. The update should occur whenever a GitHub ticket gets
- *  assigned to a milestone.
- */
+  new Assume(project, xml).notPmo().type('Job milestoned')
+  ClaimIn claim = new ClaimIn(xml)
+  String job = claim.param('job')
+  String milestone = claim.param('milestone')
+  new Precedences(project).bootstrap()
+    .add('finish-to-start', job, 'job', milestone, 'milestone')
 }

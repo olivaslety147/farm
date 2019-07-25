@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,7 +21,7 @@ import com.jcabi.xml.XMLDocument;
 import com.zerocracy.Farm;
 import com.zerocracy.Item;
 import com.zerocracy.Project;
-import com.zerocracy.pm.Footprint;
+import com.zerocracy.claims.Footprint;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,9 +33,7 @@ import org.cactoos.io.TeeInput;
 /**
  * Footprint item.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.18
+ * @since 1.0
  */
 @EqualsAndHashCode(of = "origin")
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
@@ -103,7 +101,10 @@ final class FtItem implements Item {
             }
             for (final XML claim : after.nodes("//claim[type!='Ping' ]")) {
                 if (!FtItem.exists(before, claim)) {
-                    footprint.open(claim);
+                    footprint.open(
+                        claim,
+                        "testFT"
+                    );
                 }
             }
         }

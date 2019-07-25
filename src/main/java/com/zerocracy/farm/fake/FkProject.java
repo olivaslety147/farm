@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,7 +16,6 @@
  */
 package com.zerocracy.farm.fake;
 
-import com.zerocracy.Farm;
 import com.zerocracy.Item;
 import com.zerocracy.Project;
 import java.io.IOException;
@@ -27,26 +26,24 @@ import java.util.Map;
 import lombok.EqualsAndHashCode;
 
 /**
- * Fake {@link Farm}.
+ * Fake {@link Project}.
  *
  * <p>There is no thread-safety guarantee.</p>
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.2
+ * @since 1.0
  */
 @EqualsAndHashCode(of = { "dir", "name" })
 public final class FkProject implements Project {
 
     /**
      * Directory.
-     * @since 0.14
+     * @since 1.0
      */
     private final Path dir;
 
     /**
      * Project name.
-     * @since 0.15
+     * @since 1.0
      */
     private final String name;
 
@@ -58,7 +55,7 @@ public final class FkProject implements Project {
     /**
      * Ctor.
      * @throws IOException If fails
-     * @since 0.14
+     * @since 1.0
      */
     public FkProject() throws IOException {
         this("FAKEPRJCT");
@@ -67,17 +64,17 @@ public final class FkProject implements Project {
     /**
      * Ctor.
      * @param file Location of files
-     * @since 0.14
+     * @since 1.0
      */
     public FkProject(final Path file) {
-        this(file, file.getFileName().toString());
+        this(file, "FAKEPRJC2");
     }
 
     /**
      * Ctor.
      * @param pid Project name/id
      * @throws IOException If fails
-     * @since 0.15
+     * @since 1.0
      */
     public FkProject(final String pid) throws IOException {
         this(Files.createTempDirectory("jstk").resolve(pid), pid);
@@ -87,7 +84,7 @@ public final class FkProject implements Project {
      * Ctor.
      * @param file Location of files
      * @param pid Project name/id
-     * @since 0.15
+     * @since 1.0
      */
     public FkProject(final Path file, final String pid) {
         this.dir = file;

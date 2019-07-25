@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -38,9 +38,10 @@ import org.xembly.Directives;
  * and represents the work specified in the current approved
  * project scope statement.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
+ * @todo #1159:30min Modify add method to accept user that created the given
+ *  Wbs item and use it in stakeholders (and tests). All Wbs items should have
+ *  an author (see zerocracy/datum#383).
  */
 @SuppressWarnings("PMD.TooManyMethods")
 public final class Wbs {

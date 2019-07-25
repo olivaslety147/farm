@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -23,9 +23,10 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Policy
 import com.zerocracy.Project
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.entry.ExtGithub
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.radars.github.Job
 
 def exec(Project project, XML xml) {
@@ -48,7 +49,7 @@ def exec(Project project, XML xml) {
   String assignee = claim.param('login')
   if (issue.author().login().equalsIgnoreCase(assignee)) {
     claim.copy()
-      .type('Make payment')
+      .type('Add award points')
       .param('job', job)
       .param('login', claim.author())
       .param(
@@ -59,6 +60,6 @@ def exec(Project project, XML xml) {
         ).say()
       )
       .param('minutes', -new Policy().get('19.self-penalty', 15))
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   }
 }

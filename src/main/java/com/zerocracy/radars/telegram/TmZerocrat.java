@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -28,10 +28,7 @@ import org.telegram.telegrambots.exceptions.TelegramApiException;
 /**
  * Actual bot implementation.
  *
- * @author Kirill (g4s8.public@gmail.com)
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.15
+ * @since 1.0
  */
 public final class TmZerocrat extends TelegramLongPollingBot {
 

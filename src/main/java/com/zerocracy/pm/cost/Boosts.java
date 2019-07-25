@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,6 +16,7 @@
  */
 package com.zerocracy.pm.cost;
 
+import com.zerocracy.Farm;
 import com.zerocracy.Item;
 import com.zerocracy.Par;
 import com.zerocracy.Project;
@@ -30,9 +31,7 @@ import org.xembly.Directives;
 
 /**
  * Payment boosts.
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.16
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class Boosts {
@@ -43,15 +42,23 @@ public final class Boosts {
     private static final int FCT_DEFAULT = 2;
 
     /**
+     * Farm.
+     */
+    private final Farm farm;
+
+    /**
      * Project.
      */
     private final Project project;
 
     /**
      * Ctor.
+     *
+     * @param farm Farm
      * @param pkt Project
      */
-    public Boosts(final Project pkt) {
+    public Boosts(final Farm farm, final Project pkt) {
+        this.farm = farm;
         this.project = pkt;
     }
 
@@ -103,12 +110,12 @@ public final class Boosts {
                 ).say(job, factor)
             );
         }
-        final Orders orders = new Orders(this.project).bootstrap();
+        final Orders orders = new Orders(this.farm, this.project).bootstrap();
         if (orders.assigned(job)) {
             final String login = orders.performer(job);
             final Rates rates = new Rates(this.project).bootstrap();
             if (rates.exists(login)) {
-                new Estimates(this.project).bootstrap().update(
+                new Estimates(this.farm, this.project).bootstrap().update(
                     // @checkstyle MagicNumber (1 line)
                     job, rates.rate(login).mul((long) factor).div(4L)
                 );

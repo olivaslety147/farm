@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,8 +20,9 @@ import com.jcabi.xml.XML
 import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.cost.Estimates
 
 def exec(Project project, XML xml) {
@@ -30,14 +31,14 @@ def exec(Project project, XML xml) {
   ClaimIn claim = new ClaimIn(xml)
   String job = claim.param('job')
   String role = claim.param('role')
-  Estimates estimates = new Estimates(project).bootstrap()
-  String tail
+  Estimates estimates = new Estimates(farm, project).bootstrap()
+  String reward
   if (estimates.exists(job)) {
-    tail = new Par(
+    reward = new Par(
       'you will earn %s on completion'
     ).say(estimates.get(job))
   } else {
-    tail = new Par('you won\'t earn any cash on completion').say()
+    reward = new Par('you won\'t earn any cash on completion').say()
   }
   Farm farm = binding.variables.farm
   claim.copy()
@@ -48,8 +49,8 @@ def exec(Project project, XML xml) {
       new Par(
         farm,
         'The job %s was assigned to you in %s as %s a minute ago;',
-        'here is [why](/footprint/%2$s/%s);'
-      ).say(job, project.pid(), role, claim.param('reason')) + tail
+        'here is [why](/footprint/%2$s/%s); '
+      ).say(job, project.pid(), role, claim.param('reason')) + reward
     )
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
 }

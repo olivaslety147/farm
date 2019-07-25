@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,8 +21,9 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.cash.Cash
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.cost.Ledger
 import com.zerocracy.pmo.Catalog
 
@@ -46,9 +47,9 @@ def exec(Project project, XML xml) {
             'because your project is in the free trial period'
           ).say(fee, job)
         )
-        .postTo(project)
+        .postTo(new ClaimsOf(farm, project))
     } else {
-      new Ledger(project).bootstrap().add(
+      new Ledger(farm, project).bootstrap().add(
         new Ledger.Transaction(
           fee,
           'expenses', 'fee',
@@ -70,7 +71,7 @@ def exec(Project project, XML xml) {
             'Management fee %s has been deducted for %s, see §23'
           ).say(fee, job)
         )
-        .postTo(project)
+        .postTo(new ClaimsOf(farm, project))
     }
   }
 }

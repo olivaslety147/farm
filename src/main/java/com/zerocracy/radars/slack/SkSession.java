@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,19 +17,22 @@
 package com.zerocracy.radars.slack;
 
 import com.ullink.slack.simpleslackapi.SlackChannel;
+import com.ullink.slack.simpleslackapi.SlackMessageHandle;
+import com.ullink.slack.simpleslackapi.SlackPersona;
+import com.ullink.slack.simpleslackapi.SlackTeam;
 import com.ullink.slack.simpleslackapi.SlackUser;
+import com.ullink.slack.simpleslackapi.listeners.SlackChannelJoinedListener;
+import com.ullink.slack.simpleslackapi.listeners.SlackMessagePostedListener;
+import com.ullink.slack.simpleslackapi.replies.SlackChannelReply;
 import java.io.Closeable;
+import java.io.IOException;
 
 /**
  * Session in Slack.
  *
- * @author Roman Proshin (roman@proshin.org)
- * @version $Id$
- * @since 0.23
- * @todo #89:30min Use this interface and its implementation RealSkSession
- *  everywhere instead of SlackSession that is used currently. When it's done
- *  some tests can be refactored to get rid of Mockito library.
+ * @since 1.0
  */
+@SuppressWarnings("PMD.TooManyMethods")
 public interface SkSession extends Closeable {
     /**
      * Find channel by its identifier.
@@ -66,4 +69,49 @@ public interface SkSession extends Closeable {
      * @return Where this session belongs to the given channel
      */
     boolean hasChannel(String id);
+
+    /**
+     * Gets team from session.
+     * @return Team from session
+     */
+    SlackTeam getTeam();
+
+    /**
+     * Connects session.
+     * @throws IOException if something goes wrong
+     */
+    void connect() throws IOException;
+
+    /**
+     * Disconnects session.
+     * @throws IOException if something goes wrong
+     */
+    void disconnect() throws IOException;
+
+    /**
+     * Gets session persona.
+     * @return Session persona
+     */
+    SlackPersona persona();
+
+    /**
+     * Add listener for posted messages.
+     * @param listener Listener for posted messages
+     */
+    void addMessagePostedListener(SlackMessagePostedListener listener);
+
+    /**
+     * Add listener for channel joined.
+     * @param listener Listener for channel joined
+     */
+    void addChannelJoinedListener(SlackChannelJoinedListener listener);
+
+    /**
+     * Opens direct message channel for user.
+     * @param user User for direct message channel
+     * @return Message channel
+     */
+    SlackMessageHandle<SlackChannelReply> openDirectMessageChannel(
+        SlackUser user
+    );
 }

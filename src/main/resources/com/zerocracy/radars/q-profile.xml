@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-Copyright (c) 2016-2018 Zerocracy
+Copyright (c) 2016-2019 Zerocracy
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to read
@@ -45,6 +45,25 @@ SOFTWARE.
     </opts>
   </cmd>
   <cmd>
+    <code>Deny resume</code>
+    <regex>deny</regex>
+    <label>deny</label>
+    <help>Deny resume</help>
+    <invited>true</invited>
+    <opts>
+      <opt>
+        <name>login</name>
+        <regex>@?[A-Za-z0-9-]+</regex>
+        <help>GitHub login of applicant</help>
+      </opt>
+      <opt>
+        <name>reason</name>
+        <regex>.+</regex>
+        <help>The reason of denial</help>
+      </opt>
+    </opts>
+  </cmd>
+  <cmd>
     <code>Breakup</code>
     <regex>breakup</regex>
     <label>breakup</label>
@@ -67,8 +86,9 @@ SOFTWARE.
     <opts>
       <opt>
         <name>mode</name>
+        <optional>true</optional>
         <regex>(on|off)</regex>
-        <help>Vacation mode: 'on' or 'off'</help>
+        <help>Vacation mode: 'on' or 'off'.</help>
       </opt>
     </opts>
   </cmd>
@@ -83,6 +103,11 @@ SOFTWARE.
         <name>pid</name>
         <regex>[A-Z0-9]{9}</regex>
         <help>Project ID you're applying to, find it [here](https://www.0crat.com/board)</help>
+      </opt>
+      <opt>
+        <name>role</name>
+        <regex>[A-Z]{2,4}</regex>
+        <help>Project role you want to apply to</help>
       </opt>
       <opt>
         <name>rate</name>
@@ -115,7 +140,7 @@ SOFTWARE.
       <opt>
         <name>pid</name>
         <regex>[A-Z0-9]{9}</regex>
-        <help>Project ID you're existing, find them in [your profile](https://www.0crat.com/me)</help>
+        <help>Project ID you're exiting, find it in [your profile](https://www.0crat.com/me)</help>
       </opt>
     </opts>
   </cmd>
@@ -135,22 +160,21 @@ SOFTWARE.
     </opts>
   </cmd>
   <cmd>
-    <code>Set wallet</code>
-    <regex>wallet</regex>
-    <label>wallet</label>
-    <help>Change your payment information</help>
+    <code>Change option</code>
+    <regex>option</regex>
+    <label>option</label>
+    <help>Change user option</help>
     <invited>true</invited>
     <opts>
       <opt>
-        <optional>true</optional>
-        <name>bank</name>
-        <regex>(paypal|btc|bch|eth|ltc|zld)</regex>
-        <help>Bank, like "paypal|btc|bch|eth|ltc|zld"</help>
+        <name>name</name>
+        <regex>[A-Za-z]{3,}</regex>
+        <help>Option name</help>
       </opt>
       <opt>
-        <name>wallet</name>
-        <regex>.+</regex>
-        <help>Technical payment details, e.g. PayPal email or Bitcoin wallet number or Zold address</help>
+        <name>value</name>
+        <regex>[a-zA-Z0-9]+</regex>
+        <help>Option value</help>
       </opt>
     </opts>
   </cmd>

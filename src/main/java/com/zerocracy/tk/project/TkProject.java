@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -42,9 +42,7 @@ import org.takes.rs.xe.XeWhen;
 /**
  * Project page.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.12
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class TkProject implements TkRegex {
@@ -73,7 +71,7 @@ public final class TkProject implements TkRegex {
                 final Project project = new RqProject(this.farm, req);
                 final Catalog catalog = new Catalog(this.farm).bootstrap();
                 final String pid = project.pid();
-                final Recharge recharge = new Recharge(this.farm, pid);
+                final Recharge recharge = new Recharge(this.farm, project);
                 final String user = new RqUser(this.farm, req, false).value();
                 return new XeChain(
                     new XeAppend("project", pid),
@@ -155,19 +153,19 @@ public final class TkProject implements TkRegex {
                                         ),
                                         new XeAppend(
                                             "cash",
-                                            new Ledger(project).bootstrap()
-                                                .cash().toString()
+                                            new Ledger(this.farm, project)
+                                                .bootstrap().cash().toString()
                                         ),
                                         new XeAppend(
                                             "estimates",
-                                            new Estimates(project).bootstrap()
-                                                .total().toString()
+                                            new Estimates(this.farm, project)
+                                                .bootstrap().total().toString()
                                         ),
                                         new XeAppend(
                                             "deficit",
                                             Boolean.toString(
-                                                new Ledger(project).bootstrap()
-                                                    .deficit()
+                                                new Ledger(this.farm, project)
+                                                    .bootstrap().deficit()
                                             )
                                         ),
                                         new XeAppend(

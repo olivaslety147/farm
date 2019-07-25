@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,30 +17,38 @@
 package com.zerocracy;
 
 import com.jcabi.aspects.Tv;
-import com.jcabi.log.Logger;
 import com.jcabi.xml.XML;
 import com.jcabi.xml.XMLDocument;
 import com.mongodb.client.model.Filters;
+import com.zerocracy.claims.ClaimsItem;
+import com.zerocracy.claims.Footprint;
 import com.zerocracy.farm.SmartFarm;
+import com.zerocracy.farm.StkSafe;
+import com.zerocracy.farm.StkTimed;
 import com.zerocracy.farm.fake.FkFarm;
 import com.zerocracy.farm.fake.FkProject;
-import com.zerocracy.farm.reactive.RvAlive;
+import com.zerocracy.farm.reactive.Brigade;
 import com.zerocracy.farm.reactive.StkGroovy;
-import com.zerocracy.pm.ClaimIn;
-import com.zerocracy.pm.Claims;
-import com.zerocracy.pm.Footprint;
+import com.zerocracy.farm.reactive.StkRuntime;
 import com.zerocracy.pmo.Catalog;
+import com.zerocracy.pmo.Pmo;
+import groovy.lang.Script;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.cactoos.Func;
 import org.cactoos.io.InputOf;
 import org.cactoos.io.InputWithFallback;
@@ -48,14 +56,13 @@ import org.cactoos.io.LengthOf;
 import org.cactoos.io.OutputTo;
 import org.cactoos.io.ResourceOf;
 import org.cactoos.io.TeeInput;
-import org.cactoos.iterable.Endless;
 import org.cactoos.iterable.Filtered;
-import org.cactoos.iterable.Limited;
 import org.cactoos.iterable.Mapped;
 import org.cactoos.iterable.Sorted;
-import org.cactoos.list.SolidList;
+import org.cactoos.list.ListOf;
+import org.cactoos.list.StickyList;
 import org.cactoos.scalar.And;
-import org.cactoos.text.JoinedText;
+import org.cactoos.scalar.Reduced;
 import org.cactoos.text.TextOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
@@ -68,6 +75,7 @@ import org.junit.runners.Parameterized;
 import org.reflections.Reflections;
 import org.reflections.Store;
 import org.reflections.scanners.ResourcesScanner;
+import org.reflections.scanners.SubTypesScanner;
 
 /**
  * Test case for all bundles.
@@ -98,9 +106,12 @@ import org.reflections.scanners.ResourcesScanner;
  * <p>This video should help you understand how to run these tests
  * one by one: https://www.youtube.com/watch?v=oWEN-vKEEYk</p>
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.11
+ * @since 1.0
+ * @todo #1364:30min This class is way to complex for a unit test. Most of the
+ *  code here should be extracted into another class. And this
+ *  new class should be covered with unit tests. And BundlesTess should be
+ *  a simple class that just calls a method or two from the other class.
+ *  Most of the checkstyle excludes should be removed after this refactoring.
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle JavadocVariableCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
@@ -128,18 +139,65 @@ public final class BundlesTest {
     private Path home;
 
     @BeforeClass
-    public static void checkShouldRun() {
+    public static void checkShouldRun() throws Exception {
         Assume.assumeThat(
             "Parameter skipBundlesTest found, skipping...",
             System.getProperty("skipBundlesTest"),
             Matchers.nullValue()
         );
+        // @checkstyle LineLengthCheck (1 line)
+        final Iterable<Map.Entry<String, List<String>>> duplicates = new Filtered<>(
+            entry -> entry.getValue().size() > 1,
+            new Reduced<>(
+                new HashMap<String, List<String>>(Tv.HUNDRED),
+                (map, bnd) -> {
+                    final String pid = BundlesTest.toPid(bnd);
+                    final List<String> list;
+                    if (map.containsKey(pid)) {
+                        list = map.get(pid);
+                    } else {
+                        list = new LinkedList<>();
+                        map.put(pid, list);
+                    }
+                    list.add(bnd);
+                    return map;
+                },
+                new Mapped<>(
+                    file -> file.getFileName().toString(),
+                    new Filtered<>(
+                        file -> Files.isDirectory(file)
+                            && !file.getFileName().toString()
+                            .equalsIgnoreCase("bundles"),
+                        Files.walk(
+                            // @checkstyle LineLengthCheck (1 line)
+                            Paths.get("src/test/resources/com/zerocracy/bundles/"), 1
+                        ).collect(Collectors.toList())
+                    )
+                )
+            ).value().entrySet()
+        );
+        final StringBuilder dupstr = new StringBuilder();
+        for (final Map.Entry<String, List<String>> duplicate : duplicates) {
+            dupstr.append(
+                String.format(
+                    "Bundle duplicate found for pid %s: %s\n",
+                    duplicate.getKey(),
+                    String.join(",", duplicate.getValue())
+                )
+            );
+        }
+        final String dss = dupstr.toString();
+        if (!dss.isEmpty()) {
+            throw new IllegalStateException(dss);
+        }
     }
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> bundles() {
-        return new SolidList<Object[]>(
-            new Mapped<>(
+        final Iterable<Object[]> list;
+        final String tests = System.getProperty("bundlesTests", "");
+        if (tests.isEmpty()) {
+            list = new Mapped<>(
                 path -> new Object[]{
                     path.substring(0, path.indexOf("/claims.xml")),
                 },
@@ -148,8 +206,16 @@ public final class BundlesTest {
                         "com.zerocracy.bundles", new ResourcesScanner()
                     ).getResources(p -> p.endsWith("claims.xml"))
                 )
-            )
-        );
+            );
+        } else {
+            list = new Mapped<>(
+                test -> new Object[]{
+                    String.format("com/zerocracy/bundles/%s", test),
+                },
+                new ListOf<>(tests.split(","))
+            );
+        }
+        return new StickyList<>(list);
     }
 
     @Before
@@ -170,26 +236,34 @@ public final class BundlesTest {
 
     @Test
     public void oneBundleWorksFine() throws Exception {
-        final XML setup = new XMLDocument(
-            new TextOf(
-                new InputWithFallback(
-                    new ResourceOf(
-                        String.format("%s/_setup.xml", this.bundle)
-                    ),
-                    new InputOf("<setup/>")
-                )
-            ).asString()
-        );
-        final String pmo = "PMO";
-        final String pid;
-        if (setup.nodes("/setup/pmo").isEmpty()) {
-            pid = this.name.toUpperCase(Locale.ENGLISH)
-                .replaceAll("[^A-Z0-9]", "")
-                .substring(0, Tv.NINE);
-        } else {
-            pid = pmo;
-        }
-        try (final Farm farm = this.farm()) {
+        try (final Farm farm = new SmartFarm(
+            new FkFarm(
+                (Func<String, Project>) pid -> new FkProject(
+                    this.home.resolve(pid), pid
+                ),
+                this.home.toString()
+            )
+        )) {
+            final XML setup = new XMLDocument(
+                new TextOf(
+                    new InputWithFallback(
+                        new ResourceOf(
+                            String.format("%s/_setup.xml", this.bundle)
+                        ),
+                        new InputOf("<setup/>")
+                    )
+                ).asString()
+            );
+            final String pmo = "PMO";
+            final String pid;
+            final List<String> projects;
+            if (setup.nodes("/setup/pmo").isEmpty()) {
+                pid = BundlesTest.toPid(this.name);
+                projects = new ListOf<>(pid, pmo);
+            } else {
+                pid = pmo;
+                projects = new ListOf<>(pmo);
+            }
             final Project project = farm.find(
                 String.format("@id='%s'", pid)
             ).iterator().next();
@@ -198,7 +272,7 @@ public final class BundlesTest {
             if (!pmo.equals(pid)) {
                 catalog.add(pid, String.format("2018/01/%s/", pid));
             }
-            for (final String pfx : new String[] {pid, pmo}) {
+            for (final String pfx : projects) {
                 new And(
                     path -> {
                         new LengthOf(
@@ -207,14 +281,17 @@ public final class BundlesTest {
                                 new OutputTo(
                                     this.home.resolve(pfx).resolve(
                                         path.substring(
-                                            path.lastIndexOf('/') + 1
-                                        )
+                                            path.lastIndexOf(this.bundle)
+                                                + this.bundle.length() + 1
+                                        ).replaceFirst("^pmo_", "")
                                     )
                                 )
                             )
                         ).intValue();
                     },
-                    BundlesTest.resources(this.bundle)
+                    BundlesTest.resources(
+                        this.bundle, pfx.equals(pmo) && !pid.equals(pmo)
+                    )
                 ).value();
             }
             new StkGroovy(
@@ -224,34 +301,7 @@ public final class BundlesTest {
                 String.format("%s_before", this.bundle),
                 farm
             ).process(project, null);
-            MatcherAssert.assertThat(
-                new And(
-                    x -> {
-                        TimeUnit.SECONDS.sleep(1L);
-                        final Claims claims = new Claims(project).bootstrap();
-                        Logger.info(
-                            this, "alive=%d, %d claims: %s",
-                            new RvAlive(farm).intValue(),
-                            claims.iterate().size(),
-                            new JoinedText(
-                                ", ",
-                                new Mapped<>(
-                                    xml -> String.format(
-                                        "%s/%d",
-                                        new ClaimIn(xml).type(),
-                                        new ClaimIn(xml).cid()
-                                    ),
-                                    claims.iterate()
-                                )
-                            ).asString()
-                        );
-                        return !claims.iterate().isEmpty()
-                            || new RvAlive(farm).intValue() > 0;
-                    },
-                    new Limited<>(Tv.THOUSAND, new Endless<>(1))
-                ).value(),
-                Matchers.equalTo(false)
-            );
+            BundlesTest.run(farm, project);
             new StkGroovy(
                 new ResourceOf(
                     String.format("%s/_after.groovy", this.bundle)
@@ -261,6 +311,7 @@ public final class BundlesTest {
             ).process(project, null);
             try (final Footprint footprint = new Footprint(farm, project)) {
                 MatcherAssert.assertThat(
+                    "Error in footprint",
                     footprint.collection().find(
                         Filters.and(
                             Filters.eq("project", project.pid()),
@@ -273,18 +324,14 @@ public final class BundlesTest {
         }
     }
 
-    private Farm farm() {
-        return new SmartFarm(
-            new FkFarm(
-                (Func<String, Project>) pid -> new FkProject(
-                    this.home.resolve(pid), pid
-                ),
-                this.home.toString()
-            )
-        ).value();
+    private static String toPid(final String bundle) {
+        return bundle.toUpperCase(Locale.ENGLISH)
+            .replaceAll("[^A-Z0-9]", "")
+            .substring(0, Tv.NINE);
     }
 
-    private static Iterable<String> resources(final String path) {
+    private static Iterable<String> resources(final String path,
+        final boolean pmo) {
         final Store store = new Reflections(
             path.replace(File.separator, "."),
             new PatternScanner(
@@ -298,9 +345,37 @@ public final class BundlesTest {
         return store.get(
             name,
             new Filtered<>(
-                p -> p.endsWith(".xml"),
+                p -> p.endsWith(".xml") && pmo == p.startsWith("pmo_"),
                 store.get(name).keySet()
             )
         );
+    }
+
+    private static void run(final Farm farm, final Project project)
+        throws IOException {
+        final Brigade brigade = new Brigade(
+            new Mapped<>(
+                cls -> new StkSafe(
+                    cls.getSimpleName(),
+                    farm,
+                    new StkTimed(
+                        new StkRuntime(cls, farm),
+                        cls.getSimpleName(),
+                        Duration.ofMinutes(1L)
+                    )
+                ),
+                new Reflections(
+                    "com.zerocracy.stk",
+                    new SubTypesScanner(false)
+                ).getSubTypesOf(Script.class)
+            )
+        );
+        final Pmo pmo = new Pmo(farm);
+        final ClaimsItem cpkt = new ClaimsItem(project).bootstrap();
+        final ClaimsItem cpmo = new ClaimsItem(pmo).bootstrap();
+        while (!cpkt.iterate().isEmpty() || !cpmo.iterate().isEmpty()) {
+            cpkt.take(xml -> brigade.apply(project, xml));
+            cpmo.take(xml -> brigade.apply(pmo, xml));
+        }
     }
 }

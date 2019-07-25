@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,12 +19,12 @@ package com.zerocracy.farm.reactive;
 import com.zerocracy.Farm;
 import com.zerocracy.Project;
 import com.zerocracy.SoftException;
+import com.zerocracy.claims.ClaimIn;
+import com.zerocracy.claims.ClaimsItem;
 import com.zerocracy.farm.MismatchException;
 import com.zerocracy.farm.fake.FkFarm;
 import com.zerocracy.farm.fake.FkProject;
 import com.zerocracy.farm.props.PropsFarm;
-import com.zerocracy.pm.ClaimIn;
-import com.zerocracy.pm.Claims;
 import com.zerocracy.pmo.Pmo;
 import org.cactoos.io.InputOf;
 import org.cactoos.text.TextOf;
@@ -34,9 +34,7 @@ import org.junit.Test;
 
 /**
  * Test case for {@link StkGroovy}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.12
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
@@ -52,19 +50,22 @@ public final class StkGroovyTest {
                     "\n",
                     "import com.zerocracy.Project",
                     "import com.jcabi.xml.XML",
-                    "import com.zerocracy.pm.ClaimOut",
+                    "import com.zerocracy.claims.ClaimOut",
                     "import com.zerocracy.farm.props.Props",
+                    "import com.zerocracy.Farm",
+                    "import com.zerocracy.entry.ClaimsOf",
                     "def exec(Project project, XML xml) {",
+                    "Farm farm = binding.variables.farm",
                     "new ClaimOut()",
                     "  .type(new Props(project).get('//testing'))",
-                    "  .postTo(project)",
+                    "  .postTo(new ClaimsOf(farm, project))",
                     "}"
                 )
             ),
             "stkgroovytest-parsesgroovy",
             farm
         ).process(project, null);
-        final Claims claims = new Claims(project).bootstrap();
+        final ClaimsItem claims = new ClaimsItem(project).bootstrap();
         MatcherAssert.assertThat(
             new ClaimIn(claims.iterate().iterator().next()).type(),
             Matchers.equalTo("yes")

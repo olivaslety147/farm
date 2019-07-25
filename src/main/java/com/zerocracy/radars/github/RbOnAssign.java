@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,7 +20,8 @@ package com.zerocracy.radars.github;
 import com.jcabi.github.Github;
 import com.jcabi.github.Issue;
 import com.zerocracy.Farm;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import java.io.IOException;
 import java.util.Locale;
 import javax.json.JsonObject;
@@ -29,9 +30,7 @@ import org.cactoos.text.FormattedText;
 /**
  * Request order start on assignment of issue.
  *
- * @author Carlos Miranda (miranda.cma@gmail.com)
- * @version $Id$
- * @since 0.16.1
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
 public final class RbOnAssign implements Rebound {
@@ -56,7 +55,7 @@ public final class RbOnAssign implements Rebound {
                 // @checkstyle AvoidInlineConditionalsCheck (1 line)
                 .param("role", issue.isPull() ? "REV" : "DEV")
                 .param("reason", "GitHub issue was assigned to 0crat")
-                .postTo(new GhProject(farm, issue.repo()));
+                .postTo(new ClaimsOf(farm, new GhProject(farm, issue.repo())));
             reply = new FormattedText(
                 "Issue #%d assigned to 0crat, adding to WBS",
                 issue.number()
@@ -77,7 +76,7 @@ public final class RbOnAssign implements Rebound {
                     "reason",
                     String.format("GitHub issue was assigned by @%s", sender)
                 )
-                .postTo(new GhProject(farm, issue.repo()));
+                .postTo(new ClaimsOf(farm, new GhProject(farm, issue.repo())));
             reply = new FormattedText(
                 "Issue #%d assigned to %s via Github",
                 issue.number(), login

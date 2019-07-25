@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,7 +21,7 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.cost.Ledger
 import com.zerocracy.pm.in.Impediments
 import com.zerocracy.pm.in.Orders
@@ -34,7 +34,7 @@ import java.time.ZonedDateTime
 def exec(Project project, XML xml) {
   new Assume(project, xml).notPmo()
   new Assume(project, xml).type('Ping hourly')
-  if (new Ledger(project).bootstrap().deficit()) {
+  if (new Ledger(farm, project).bootstrap().deficit()) {
     // We must not remind anyone if the project is not funded now. Simply
     // because we can't force any actions at the moment. We will remind,
     // but developers will be stuck anyway. They may lose their jobs
@@ -45,8 +45,8 @@ def exec(Project project, XML xml) {
   ZonedDateTime now = ZonedDateTime.ofInstant(
     claim.created().toInstant(), ZoneOffset.UTC
   )
-  Orders orders = new Orders(project).bootstrap()
-  Impediments impediments = new Impediments(project).bootstrap()
+  Orders orders = new Orders(farm, project).bootstrap()
+  Impediments impediments = new Impediments(farm, project).bootstrap()
   Farm farm = binding.variables.farm
   Roles pmos = new Roles(new Pmo(farm)).bootstrap()
   orders.olderThan(now.minusDays(5)).each { job ->

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,7 +18,7 @@ package com.zerocracy.radars.viber;
 
 import com.jcabi.xml.XMLDocument;
 import com.zerocracy.Farm;
-import com.zerocracy.pmo.Pmo;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.radars.ClaimOnQuestion;
 import com.zerocracy.radars.Question;
 import java.io.IOException;
@@ -26,9 +26,7 @@ import java.io.IOException;
 /**
  * Viber profile reaction.
  *
- * @author Carlos Miranda (miranda.cma@gmail.com)
- * @version $Id$
- * @since 0.22
+ * @since 1.0
  */
 public final class ReProfile implements Reaction {
 
@@ -49,7 +47,7 @@ public final class ReProfile implements Reaction {
             .claim()
             .token(new VbToken(update))
             .author(new VbPerson(farm, msg).uid(question.invited()))
-            .postTo(new Pmo(farm));
+            .postTo(new ClaimsOf(farm));
         return question.matches();
     }
 }

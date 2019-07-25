@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,12 +17,18 @@
 package com.zerocracy.pmo;
 
 import com.jcabi.aspects.Tv;
+import com.jcabi.matchers.XhtmlMatchers;
+import com.zerocracy.Farm;
 import com.zerocracy.Project;
 import com.zerocracy.SoftException;
 import com.zerocracy.Xocument;
 import com.zerocracy.farm.fake.FkFarm;
 import com.zerocracy.farm.fake.FkProject;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import org.cactoos.text.JoinedText;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Rule;
@@ -32,9 +38,7 @@ import org.junit.rules.TemporaryFolder;
 
 /**
  * Test case for {@link Agenda}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.12
+ * @since 1.0
  * @checkstyle AvoidDuplicateLiterals (500 lines)
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle JavadocVariableCheck (500 lines)
@@ -154,6 +158,65 @@ public final class AgendaTest {
             new Xocument(tmp.resolve("agenda/user.xml"))
                 .xpath("agenda/order/title/text()"),
             Matchers.contains(title)
+        );
+    }
+
+    @Test
+    public void addInspector() throws Exception {
+        final Path tmp = this.folder.newFolder().toPath();
+        final FkProject project = new FkProject(tmp);
+        final String performer = "user42";
+        final Agenda agenda = new Agenda(new FkFarm(project), performer)
+            .bootstrap();
+        final String job = "gh:test/test#666";
+        agenda.add(project, job, "DEV");
+        final String inspector = "qauser";
+        agenda.inspector(job, inspector);
+        MatcherAssert.assertThat(
+            new Xocument(
+                tmp.resolve(String.format("agenda/%s.xml", performer))
+            ),
+            XhtmlMatchers.hasXPath(
+                new JoinedText(
+                    "",
+                    "/agenda/order",
+                    String.format("[@job = '%s']", job),
+                    "/inspector",
+                    String.format("[text() = '%s']", inspector)
+                ).asString()
+            )
+        );
+    }
+
+    @Test
+    public void returnsAddedTime() throws Exception {
+        final Project project = new FkProject();
+        final FkFarm farm = new FkFarm(project);
+        final Instant time = Instant.now();
+        final Agenda agenda = new Agenda(
+            farm, "yegor", Clock.fixed(time, ZoneOffset.UTC)
+        ).bootstrap();
+        final String first = "gh:test/test#1";
+        agenda.add(project, first, "REV");
+        MatcherAssert.assertThat(
+            agenda.added(first), Matchers.is(time)
+        );
+    }
+
+    @Test
+    public void returnsRole() throws Exception {
+        final Project project = new FkProject();
+        final Farm farm = new FkFarm(project);
+        final Agenda agenda = new Agenda(farm, "yegor").bootstrap();
+        final String dev = "gh:test/test#1";
+        agenda.add(project, dev, "DEV");
+        MatcherAssert.assertThat(
+            agenda.role(dev), Matchers.is("DEV")
+        );
+        final String rev = "gh:test/test#2";
+        agenda.add(project, rev, "REV");
+        MatcherAssert.assertThat(
+            agenda.role(rev), Matchers.is("REV")
         );
     }
 }

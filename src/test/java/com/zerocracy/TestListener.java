@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -29,10 +29,9 @@ import org.junit.runner.notification.RunListener;
 
 /**
  * Run listener for the entire test suite.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.18
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
+ * @checkstyle NoJavadocForOverriddenMethodsCheck (500 lines)
  */
 public final class TestListener extends RunListener {
 
@@ -49,6 +48,26 @@ public final class TestListener extends RunListener {
         );
     }
 
+    /**
+     * Method executed after test run is finished.
+     *
+     * It runs receiving result parameter, which is the result from finished
+     * test run. If the string "Caused by:" is found inside result it means
+     * that some exception were triggered in some test execution, and
+     * {@link #testRunFinished(Result)} throws an {@link IllegalStateException}
+     * to make explicit that some exceptions occured during the tests.
+     *
+     * Sometimes {@link #testRunFinished(Result)} throws the
+     * {@link IllegalStateException} but the test results show no failures or
+     * exceptions stracktraces. That means that some exceptions was swallowed
+     * or treated in tests execution but its log have been added to result
+     * anyways. See {@link https://github.com/zerocracy/farm/issues/1227
+     * #1227} for more information about this.
+     *
+     * @param result Test run results
+     * @throws Exception When threads are still alive or when are exceptions
+     *  in the test log
+     */
     @Override
     public void testRunFinished(final Result result) throws Exception {
         super.testRunFinished(result);
@@ -82,4 +101,9 @@ public final class TestListener extends RunListener {
         }
     }
 
+    @Override
+    public void testStarted(final Description description) throws Exception {
+        super.testStarted(description);
+        this.log.reset();
+    }
 }

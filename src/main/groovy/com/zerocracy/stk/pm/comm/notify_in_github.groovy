@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -24,10 +24,11 @@ import com.jcabi.github.Repo
 import com.jcabi.xml.XML
 import com.zerocracy.Farm
 import com.zerocracy.Project
+import com.zerocracy.claims.ClaimIn
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.entry.ExtGithub
 import com.zerocracy.farm.Assume
 import com.zerocracy.farm.props.Props
-import com.zerocracy.pm.ClaimIn
 import com.zerocracy.radars.github.GhTube
 import com.zerocracy.radars.github.Quota
 import com.zerocracy.radars.github.ThrottledComments
@@ -49,8 +50,13 @@ def exec(Project project, XML xml) {
   }
   Farm farm = binding.variables.farm
   Github github = new ExtGithub(farm).value()
+  // @todo #1390:30min Adjust call below to Quota.over with proper message and
+  //  create test case for the scenario it returns true.
+  //  The PR https://github.com/zerocracy/farm/pull/1501 introduced this change
+  //  on Quota.over and has example of its adjustment and test for the case of
+  //  over use in AcceptInvitations.
   if (new Quota(github).over()) {
-    claim.copy().until(TimeUnit.MINUTES.toSeconds(5L)).postTo(project)
+    claim.copy().until(TimeUnit.MINUTES.toSeconds(5L)).postTo(new ClaimsOf(farm, project))
     return
   }
   Repo repo = github.repos().get(
@@ -58,7 +64,7 @@ def exec(Project project, XML xml) {
   )
   Props props = new Props(farm)
   String message = String.format(
-    '%s\n\n<!-- https://www.0crat.com/footprint/%s/%d, version: %s, hash: %s -->',
+    '%s\n\n<!-- https://www.0crat.com/footprint/%s/%s, version: %s, hash: %s -->',
     claim.param('message'),
     project.pid(),
     claim.cid(),

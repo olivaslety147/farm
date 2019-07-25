@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,8 +20,9 @@ import com.jcabi.xml.XML
 import com.zerocracy.Farm
 import com.zerocracy.Project
 import com.zerocracy.cash.Cash
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.cost.Estimates
 import com.zerocracy.pm.in.Orders
 import com.zerocracy.pm.scope.Wbs
@@ -32,7 +33,7 @@ def exec(Project project, XML xml) {
   new Assume(project, xml).type('Order was given')
   ClaimIn claim = new ClaimIn(xml)
   String job = claim.param('job')
-  Orders orders = new Orders(project).bootstrap()
+  Orders orders = new Orders(farm, project).bootstrap()
   if (!orders.assigned(job)) {
     return
   }
@@ -41,7 +42,7 @@ def exec(Project project, XML xml) {
   Farm farm = binding.variables.farm
   Agenda agenda = new Agenda(farm, owner).bootstrap()
   agenda.add(project, job, role)
-  Estimates estimates = new Estimates(project).bootstrap()
+  Estimates estimates = new Estimates(farm, project).bootstrap()
   Cash cash = Cash.ZERO
   if (estimates.exists(job)) {
     cash = estimates.get(job)
@@ -51,5 +52,5 @@ def exec(Project project, XML xml) {
     .type('Agenda was updated')
     .param('login', owner)
     .param('estimate', cash)
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
 }

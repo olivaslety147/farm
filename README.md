@@ -1,17 +1,19 @@
 <img src="https://www.0crat.com/svg/logo.svg" width="64px" height="64px"/>
 
-[![EO principles respected here](http://www.elegantobjects.org/badge.svg)](http://www.elegantobjects.org)
+[![EO principles respected here](https://www.elegantobjects.org/badge.svg)](https://www.elegantobjects.org)
 [![Managed by Zerocracy](https://www.0crat.com/badge/C3NDPUA8L.svg)](https://www.0crat.com/p/C3NDPUA8L)
 [![DevOps By Rultor.com](http://www.rultor.com/b/zerocracy/farm)](http://www.rultor.com/p/zerocracy/farm)
-[![We recommend IntelliJ IDEA](http://www.elegantobjects.org/intellij-idea.svg)](https://www.jetbrains.com/idea/)
+[![We recommend IntelliJ IDEA](https://www.elegantobjects.org/intellij-idea.svg)](https://www.jetbrains.com/idea/)
 
-[![Stability of Webhook](https://www.rehttp.net/b?u=http%3A%2F%2Fwww.0crat.com%2Fghook)](https://www.rehttp.net/i?u=http%3A%2F%2Fwww.0crat.com%2Fghook)
-[![Availability at SixNines](http://www.sixnines.io/b/2b3a)](http://www.sixnines.io/h/2b3a)
 [![Build Status](https://travis-ci.org/zerocracy/farm.svg?branch=master)](https://travis-ci.org/zerocracy/farm)
 [![Build status](https://ci.appveyor.com/api/projects/status/yrnrhc44a09u3g59?svg=true)](https://ci.appveyor.com/project/yegor256/farm)
 [![PDD status](http://www.0pdd.com/svg?name=zerocracy/farm)](http://www.0pdd.com/p?name=zerocracy/farm)
+[![Hits-of-Code](https://hitsofcode.com/github/zerocracy/farm)](https://hitsofcode.com/view/github/zerocracy/farm)
 
-[What is it?](http://www.zerocracy.com/toc.html)
+[![Stability of Webhook](https://www.rehttp.net/b?u=http%3A%2F%2Fwww.0crat.com%2Fghook)](https://www.rehttp.net/i?u=http%3A%2F%2Fwww.0crat.com%2Fghook)
+[![Availability at SixNines](https://www.sixnines.io/b/9f5b)](https://www.sixnines.io/h/9f5b)
+
+Read this article first: [_What is it?_](http://www.zerocracy.com/toc.html)
 
 It's a core repository of [Zerocrat](https://www.0crat.com).
 It contains our persistence layer (`com.zerocracy.farm`),
@@ -205,7 +207,11 @@ In order to integrate and test the entire system we have a collection of
 "bundles" in `com.zerocracy.bundles` package,
 which are simulators of real projects. Each bundle is a collection
 of files, which we place into a fake project and run claims dispatcher,
-just like it would happen in a real project. `BundlesTest` does this.
+just like it would happen in a real project.  `BundlesTest` does this.
+If some fails need to be placed into PMO project then they should be prefixed
+with `pmo_`, e.g. pmo_people.xml, unless it is a PMO test (with `_setup.xml`
+`/setup/pmo` set to `true`), then there is no need to prefix the files
+with `pmo_`.
 
 In order to create a new bundle you just copy an existing one and edit
 its files. The key file, of course, is the `claims.xml`, which contains
@@ -224,7 +230,15 @@ the list of claims to be dispatched. There are also a few supplementary files:
 
 More details you can find in the Javadoc section of `BundlesTest`.
 
-You can skip BundlesTest's execution by specifying ``-DskipBundlesTest``:
+The entire `BundlesTest` suite can take a very long amount of time to execute.
+If you are debugging a certain test or function, you can specify the exact tests
+to run by specifying a comma separated list via `-DbundlesTests`. E.g. to run
+the `assign_role` and `cancel_order` tests:
+
+``$mvn clean install -Pqulice -DbundlesTests=assign_role,cancel_order``
+
+Alternatively, you can skip `BundlesTest` suite execution altogether by
+specifying ``-DskipBundlesTest``:
 
 ``$mvn clean install -Pqulice -DskipBundlesTest``
 
@@ -260,26 +274,37 @@ Here, `"18.days"` is the HTML `id` attribute and `90` is the default value to
 be used during unit testing. You must always use class `Policy` in your code
 and never hard-code any business constants.
 
+## Time API
+
+We don't mix different Java Time APIs and we have chosen the new java.time.*
+classes instead of the old Date and Calendar classes. Old classes can be used
+only in cases where external libraries require or return them.
+
+When considering which of the new classes to use, it is best to first try
+`Instant`, if more formatting or manipulation of the date/time is needed then
+`ZonedDateTime` with ZoneOffset.UTC. LocalDateTime/LocalDate/LocalTime should
+be used as a last resort (as it is e.g. problematic during the switch to
+daylight saving).
+
 ## How to contribute
 
 Just fork it, make changes, run `mvn clean install -Pqulice,codenarc`,
 and submit a pull request. Read
 [this](http://www.yegor256.com/2014/04/15/github-guidelines.html), if lost.
 
-## License
+Keep in mind that you don't need to setup the server locally or start it. If you need to
+prove that a class is working - write a unit tests for it or integration tests if external API
+is involved (see `ClaimsSqsITCase` for instance).
+See this for details: https://www.yegor256.com/2016/02/09/are-you-still-debugging.html
 
-Copyright (c) 2016-2018 Zerocracy
+Don't forget to add documentation for groovy scripts if you create new
+stakeholder.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to read
-the Software only. Permissions is hereby NOT GRANTED to use, copy, modify,
-merge, publish, distribute, sublicense, and/or sell copies of the Software.
+## Maven profiles
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+There are maven profiles which you can enable:
 
+ - `qulice` - enables [Qulice](https://www.qulice.com/) (Source Code Quality Police) profile
+ - `codenarc` - enables [Codenarc](http://codenarc.sourceforge.net/) validation
+ - `upgrade-bundles` - fetch fresh xml schemas from `datum` repo and update bundle tests
+ - `dynamodb` - starts local dynamodb instance for integration testing

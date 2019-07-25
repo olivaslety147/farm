@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -25,14 +25,16 @@ import com.zerocracy.Par
 import com.zerocracy.Policy
 import com.zerocracy.Project
 import com.zerocracy.cash.Cash
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.entry.ExtGithub
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pmo.Catalog
 
 def exec(Project project, XML xml) {
   new Assume(project, xml).notPmo()
-  new Assume(project, xml).type('Project link was added', 'Project link was removed')
+  new Assume(project, xml)
+    .type('Project link was added', 'Project link was removed', 'Repo visibility changed')
   ClaimIn claim = new ClaimIn(xml)
   Farm farm = binding.variables.farm
   Catalog catalog = new Catalog(farm).bootstrap()
@@ -61,7 +63,7 @@ def exec(Project project, XML xml) {
           'the management fee is waived, see §23'
         ).say()
       )
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   }
   if (!free && catalog.fee(project.pid()) == Cash.ZERO) {
     Cash fee = new Policy().get('23.fee', Cash.ZERO)
@@ -75,6 +77,6 @@ def exec(Project project, XML xml) {
           'the management fee %s is applied, see §23'
         ).say(fee)
       )
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   }
 }

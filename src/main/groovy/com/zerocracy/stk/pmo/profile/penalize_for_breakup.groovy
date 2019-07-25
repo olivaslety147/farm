@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,23 +21,28 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Policy
 import com.zerocracy.Project
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
+import com.zerocracy.pm.staff.Roles
 import com.zerocracy.pmo.Awards
-
+import com.zerocracy.pmo.Pmo
 
 def exec(Project pmo, XML xml) {
   new Assume(pmo, xml).isPmo()
   new Assume(pmo, xml).type('Breakup')
   ClaimIn claim = new ClaimIn(xml)
-  String student = claim.param('login')
   String author = claim.author()
+  Farm farm = binding.variables.farm
+  if (new Roles(new Pmo(farm)).bootstrap().hasAnyRole(author)) {
+    return
+  }
+  String student = claim.param('login')
   String job = 'gh:zerocracy/datum#1'
   int points = -new Policy().get('47.penalty', 256)
   String reason = new Par(
     'Penalize for breakup with %s'
   ).say(student)
-  Farm farm = binding.variables.farm
   new Awards(farm, author).bootstrap().add(pmo, points, job, 'Penalize for breakup')
   claim.copy()
     .type('Award points were added')
@@ -45,11 +50,11 @@ def exec(Project pmo, XML xml) {
     .param('login', author)
     .param('points', points)
     .param('reason', reason)
-    .postTo(pmo)
+    .postTo(new ClaimsOf(farm))
   claim.reply(
     new Par(
       'Since you broke up with student %s,',
       'we deducted %d points from you in accordance with §47.'
     ).say(student, -points)
-  ).postTo(pmo)
+  ).postTo(new ClaimsOf(farm))
 }

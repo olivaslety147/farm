@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -23,8 +23,9 @@ import com.zerocracy.Project
 import com.zerocracy.SoftException
 import com.zerocracy.cash.Cash
 import com.zerocracy.cash.CashParsingException
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pmo.People
 
 def exec(Project pmo, XML xml) {
@@ -45,7 +46,7 @@ def exec(Project pmo, XML xml) {
   }
   Cash rate
   try {
-    rate = new Cash.S(claim.param('rate').replaceAll('([A-Z]{3})$', ' \1'))
+    rate = new Cash.S(claim.param('rate').replaceAll('(.*)([A-Z]{3})$', '$2 $1'))
   } catch (CashParsingException ex) {
     throw new SoftException(
       new Par(
@@ -67,5 +68,5 @@ def exec(Project pmo, XML xml) {
     new Par(
       'Rate of @%s set to %s, according to §16'
     ).say(author, rate)
-  ).postTo(pmo)
+  ).postTo(new ClaimsOf(farm))
 }

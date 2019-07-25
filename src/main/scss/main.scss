@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2018 Zerocracy
+// Copyright (c) 2016-2019 Zerocracy
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to read
@@ -13,11 +13,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-@import "//fonts.googleapis.com/css?family=Nunito";
-@import "//cdn.rawgit.com/yegor256/tacit/gh-pages/tacit-css-1.2.9.min.css";
+@import "//cdn.jsdelivr.net/gh/yegor256/tacit@gh-pages/tacit.min.css";
 
 body {
-  font-family: 'Nunito', sans-serif;
   padding: 1em;
 }
 
@@ -108,7 +106,6 @@ header {
     color: #275a90!important;
     text-decoration: none;
     background:none!important;
-    font-family: 'Nunito', sans-serif;
     margin:0;
     padding:0;
 }

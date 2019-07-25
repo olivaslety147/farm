@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,14 +18,14 @@ package com.zerocracy.pmo;
 
 import com.jcabi.dynamo.Attributes;
 import com.jcabi.dynamo.QueryValve;
-import com.jcabi.dynamo.Region;
 import com.jcabi.dynamo.Table;
 import com.jcabi.xml.XMLDocument;
 import com.zerocracy.Farm;
 import com.zerocracy.Project;
+import com.zerocracy.claims.ClaimIn;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.entry.ExtDynamo;
-import com.zerocracy.pm.ClaimIn;
-import com.zerocracy.pm.ClaimOut;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import org.xembly.Xembler;
@@ -33,18 +33,16 @@ import org.xembly.Xembler;
 /**
  * Hints to publish.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.22
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
 public final class Hint {
 
     /**
-     * DynamoDB region.
+     * Farm.
      */
-    private final Region region;
+    private final Farm frm;
 
     /**
      * Rank.
@@ -64,19 +62,6 @@ public final class Hint {
     /**
      * Ctor.
      * @param farm The farm
-     * @param rnk Importance rank
-     * @param seconds How long it should stay alive before the next hint
-     * @param clm The claim
-     * @checkstyle ParameterNumberCheck (5 lines)
-     */
-    public Hint(final Farm farm, final int rnk,
-        final int seconds, final ClaimOut clm) {
-        this(new ExtDynamo(farm).value(), rnk, seconds, clm);
-    }
-
-    /**
-     * Ctor.
-     * @param farm The farm
      * @param seconds How long it should stay alive before the next hint
      * @param clm The claim
      * @checkstyle ParameterNumberCheck (5 lines)
@@ -84,7 +69,7 @@ public final class Hint {
     public Hint(final Farm farm,
         final int seconds, final ClaimOut clm) {
         // @checkstyle MagicNumber (1 line)
-        this(new ExtDynamo(farm).value(), 80, seconds, clm);
+        this(farm, 80, seconds, clm);
     }
 
     /**
@@ -98,15 +83,15 @@ public final class Hint {
 
     /**
      * Ctor.
-     * @param rgn The region
+     * @param farm The farm
      * @param rnk Importance rank
      * @param seconds How long it should stay alive before the next hint
      * @param clm The claim
      * @checkstyle ParameterNumberCheck (5 lines)
      */
-    public Hint(final Region rgn, final int rnk,
+    public Hint(final Farm farm, final int rnk,
         final int seconds, final ClaimOut clm) {
-        this.region = rgn;
+        this.frm = farm;
         this.rank = rnk;
         this.age = seconds;
         this.claim = clm;
@@ -120,7 +105,8 @@ public final class Hint {
      */
     public boolean postTo(final Project project)
         throws IOException {
-        final Table table = this.region.table("0crat-hints");
+        final Table table = new ExtDynamo(this.frm).value()
+            .table("0crat-hints");
         final String mnemo = this.mnemo(project);
         final boolean exists = !table.frame().through(
             new QueryValve().withLimit(1)
@@ -141,7 +127,7 @@ public final class Hint {
                     )
                     .with("when", System.currentTimeMillis())
             );
-            this.claim.postTo(project);
+            this.claim.postTo(new ClaimsOf(this.frm, project));
             posted = true;
         }
         return posted;

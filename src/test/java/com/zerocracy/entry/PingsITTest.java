@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,9 +19,9 @@ package com.zerocracy.entry;
 import com.jcabi.aspects.Tv;
 import com.jcabi.xml.XML;
 import com.zerocracy.Project;
+import com.zerocracy.claims.ClaimIn;
+import com.zerocracy.claims.ClaimsItem;
 import com.zerocracy.farm.fake.FkFarm;
-import com.zerocracy.pm.ClaimIn;
-import com.zerocracy.pm.Claims;
 import com.zerocracy.pmo.Catalog;
 import java.util.Date;
 import java.util.Properties;
@@ -38,9 +38,7 @@ import org.quartz.impl.StdSchedulerFactory;
 /**
  * Integration test for quartz with real database.
  * To start it replace PG_* constants with real connection parameters.
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.21
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
@@ -106,7 +104,7 @@ public final class PingsITTest {
         );
         pings.start();
         final Date start = new Date();
-        final Claims claims = new Claims(prj).bootstrap();
+        final ClaimsItem claims = new ClaimsItem(prj).bootstrap();
         boolean get = false;
         while (
             new Date().getTime() - start.getTime()

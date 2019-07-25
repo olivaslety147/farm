@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -23,15 +23,18 @@ import com.zerocracy.Par
 import com.zerocracy.Policy
 import com.zerocracy.Project
 import com.zerocracy.cash.Cash
+import com.zerocracy.claims.ClaimIn
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
 import com.zerocracy.farm.fake.FkProject
-import com.zerocracy.pm.ClaimIn
 import com.zerocracy.pm.cost.Ledger
 import com.zerocracy.pmo.Debts
+import com.zerocracy.pmo.People
 import com.zerocracy.pmo.banks.Payroll
 import org.xembly.Xembler
 
-import java.util.concurrent.TimeUnit
+import java.time.Duration
+import java.time.Instant
 
 def exec(Project pmo, XML xml) {
   /*
@@ -40,18 +43,26 @@ def exec(Project pmo, XML xml) {
    *  fixed in #565 ticket.
    */
   new Assume(pmo, xml).isPmo()
-  new Assume(pmo, xml).type('Ping hourly')
+  new Assume(pmo, xml).type('Ping hourly', 'Ping daily')
   Farm farm = binding.variables.farm
   Debts debts = new Debts(farm).bootstrap()
   ClaimIn claim = new ClaimIn(xml)
-  debts.iterate().each { uid ->
-    if (!debts.expired(uid)) {
+  boolean daily = claim.type().equalsIgnoreCase('ping daily')
+  String filter
+  if (daily) {
+    filter = 'failure/attempt > 10'
+  } else {
+    filter = 'not(failure) or failure/attempt <= 10'
+  }
+  debts.iterate(filter).each { uid ->
+    boolean  zld = new People(farm).bootstrap().bank(uid) == 'zld'
+    if (!debts.expired(uid) && !zld) {
       return
     }
     Cash debt = debts.amount(uid)
     Policy policy = new Policy()
-    if (debt < policy.get('46.threshold', new Cash.S('$50')) &&
-      !debts.olderThan(uid, new Date(new Date().time - TimeUnit.DAYS.toMillis(policy.get('46.days', 20))))) {
+    if (!zld && debt < policy.get('46.threshold', new Cash.S('$50')) &&
+      !debts.olderThan(uid, Instant.now() - Duration.ofDays(policy.get('46.days', 20)))) {
       return
     }
     try {
@@ -64,9 +75,10 @@ def exec(Project pmo, XML xml) {
       }
       String details = amounts.join(', ')
       String pid = new Payroll(farm).pay(
-        new Ledger(new FkProject()).bootstrap(),
+        new Ledger(farm, new FkProject()).bootstrap(),
         uid, debt,
-        new Par('Debt repayment, per §46: %s').say(details)
+        new Par('Debt repayment, per §46: %s').say(details),
+        debts.hash(uid)
       )
       debts.remove(uid)
       claim.copy()
@@ -75,7 +87,7 @@ def exec(Project pmo, XML xml) {
         .param('payment_id', pid)
         .param('details', details)
         .param('amount', debt)
-        .postTo(pmo)
+        .postTo(new ClaimsOf(farm))
       claim.copy()
         .type('Notify user')
         .token("user;${uid}")
@@ -85,7 +97,7 @@ def exec(Project pmo, XML xml) {
             'We just paid you the debt of %s (`%s`)'
           ).say(debt, pid)
         )
-        .postTo(pmo)
+        .postTo(new ClaimsOf(farm))
     } catch (IOException ex) {
       debts.failure(uid, ex.message)
       claim.copy()
@@ -93,7 +105,7 @@ def exec(Project pmo, XML xml) {
         .param('login', uid)
         .param('amount', debt)
         .param('failure', ex.message)
-        .postTo(pmo)
+        .postTo(new ClaimsOf(farm))
       claim.copy()
         .type('Notify user')
         .token("user;${uid}")
@@ -104,13 +116,13 @@ def exec(Project pmo, XML xml) {
             'don\'t worry, we will retry very soon'
           ).say(debt, ex.message)
         )
-        .postTo(pmo)
+        .postTo(new ClaimsOf(farm))
       claim.copy().type('Notify PMO').param(
         'message',
         new Par(
           'We failed to pay the debt of %s to @%s: %s'
         ).say(debt, uid, ex.message)
-      ).postTo(pmo)
+      ).postTo(new ClaimsOf(farm))
       throw ex
     }
   }

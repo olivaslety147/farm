@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,7 +20,8 @@ import com.zerocracy.Farm;
 import com.zerocracy.Par;
 import com.zerocracy.Policy;
 import com.zerocracy.Project;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.pmo.Exam;
 import com.zerocracy.pmo.Vacancies;
 import com.zerocracy.tk.RqUser;
@@ -37,9 +38,7 @@ import org.takes.rq.form.RqFormSmart;
 /**
  * Announce hiring.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.22
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
@@ -66,13 +65,13 @@ public final class TkHiring implements TkRegex {
         final RqFormSmart form = new RqFormSmart(new RqGreedy(req));
         final String text = form.single("text");
         new ClaimOut()
-            .type("Make payment")
+            .type("Add award points")
             .author(user)
             .param("login", user)
             .param("job", "none")
             .param("minutes", -new Policy().get("51.price", 0))
             .param("reason", "Job announced to all users")
-            .postTo(project);
+            .postTo(new ClaimsOf(this.farm, project));
         new Vacancies(this.farm).bootstrap().add(project, user, text);
         new ClaimOut()
             .type("Notify all")
@@ -89,7 +88,8 @@ public final class TkHiring implements TkRegex {
                 ).say(project.pid(), user, text)
             )
             .param("min", new Policy().get("33.min-live", 0))
-            .postTo(this.farm);
+            .param("reason", "Project published")
+            .postTo(new ClaimsOf(this.farm, project));
         return new RsForward(
             new RsParFlash(
                 new Par(

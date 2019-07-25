@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,22 +20,23 @@ import com.jcabi.matchers.XhtmlMatchers;
 import com.zerocracy.Farm;
 import com.zerocracy.farm.fake.FkFarm;
 import com.zerocracy.farm.props.PropsFarm;
-import java.net.HttpURLConnection;
+import com.zerocracy.pmo.People;
+import com.zerocracy.pmo.Resumes;
+import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import org.cactoos.iterable.IterableOf;
 import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
+import org.hamcrest.text.StringContainsInOrder;
 import org.junit.Test;
-import org.takes.facets.hamcrest.HmRsHeader;
-import org.takes.facets.hamcrest.HmRsStatus;
 import org.takes.rq.RqFake;
-import org.takes.rq.RqWithBody;
 import org.takes.rs.RsPrint;
 
 /**
  * Test case for {@link TkJoin}.
  *
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.20
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
@@ -49,7 +50,9 @@ public final class TkJoinTest {
             XhtmlMatchers.xhtml(
                 new RsPrint(
                     new TkApp(farm).act(
-                        new RqWithUser(farm, new RqFake("GET", "/join"))
+                        new RqWithUser.WithInit(
+                            farm, new RqFake("GET", "/join")
+                        )
                     )
                 ).printBody()
             ),
@@ -57,22 +60,97 @@ public final class TkJoinTest {
         );
     }
 
+    /**
+     * {@link TkJoinPost} can show resume without Examiner
+     * if user already applied.
+     * {@link TkJoinPost} must show user's resume, if there is one, when
+     * user tries to access <code>/join</code> endpoint.
+     * @throws IOException If something goes wrong accessing page
+     */
     @Test
-    public void acceptRequestAndRedirectOnPost() throws Exception {
+    public void showsResumeWithoutExaminerIfAlreadyApplied() throws Exception {
         final Farm farm = new PropsFarm(new FkFarm());
+        final People people = new People(farm).bootstrap();
+        final String uid = "yegor256";
+        people.touch(uid);
+        people.apply(uid, Instant.now());
+        final Resumes resumes = new Resumes(farm).bootstrap();
+        final Instant time = Instant.parse("2018-02-01T00:00:00Z");
+        final String text = "This resume exists in farm";
+        final String personality = "INTJ-A";
+        final long id = 187141;
+        final String telegram = "existentresumetelegram";
+        resumes.add(
+            uid,
+            LocalDateTime.ofInstant(time, ZoneOffset.UTC),
+            text,
+            personality,
+            id,
+            telegram
+        );
         MatcherAssert.assertThat(
-            new TkApp(farm).act(
-                new RqWithBody(
-                    new RqWithUser(
-                        farm,
-                        new RqFake("POST", "/join-post")
-                    ),
-                    "personality=INTJ-A&stackoverflow=187141"
+            new RsPrint(
+                new TkApp(farm).act(
+                    new RqWithUser.WithInit(
+                        farm, new RqFake("GET", "/join")
+                    )
                 )
-            ),
-            Matchers.allOf(
-                new HmRsStatus(HttpURLConnection.HTTP_SEE_OTHER),
-                new HmRsHeader("Location", "/join")
+            ).printBody(),
+            new StringContainsInOrder(
+                new IterableOf<>(
+                    text,
+                    telegram,
+                    personality,
+                    "Your resume will be assigned for review soon"
+                )
+            )
+        );
+    }
+
+    /**
+     * {@link TkJoinPost} can show resume if user already applied.
+     * {@link TkJoinPost} must show user's resume, if there is one, when
+     * user tries to access <code>/join</code> endpoint.
+     * @throws IOException If something goes wrong accessing page
+     */
+    @Test
+    public void showsResumeIfAlreadyApplied() throws Exception {
+        final Farm farm = new PropsFarm(new FkFarm());
+        final People people = new People(farm).bootstrap();
+        final String uid = "yegor256";
+        people.touch(uid);
+        people.apply(uid, Instant.now());
+        final Resumes resumes = new Resumes(farm).bootstrap();
+        final Instant time = Instant.parse("2018-02-01T00:00:00Z");
+        final String text = "This resume exists in farm";
+        final String personality = "INTJ-A";
+        final String examiner = "examiner123";
+        final long id = 187141;
+        final String telegram = "existentresumetelegram";
+        resumes.add(
+            uid,
+            LocalDateTime.ofInstant(time, ZoneOffset.UTC),
+            text,
+            personality,
+            id,
+            telegram
+        );
+        resumes.assign(uid, examiner);
+        MatcherAssert.assertThat(
+            new RsPrint(
+                new TkApp(farm).act(
+                    new RqWithUser.WithInit(
+                        farm, new RqFake("GET", "/join")
+                    )
+                )
+            ).printBody(),
+            new StringContainsInOrder(
+                new IterableOf<>(
+                    text,
+                    telegram,
+                    personality,
+                    examiner
+                )
             )
         );
     }

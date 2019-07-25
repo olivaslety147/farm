@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,16 +16,11 @@
  */
 package com.zerocracy.tk;
 
-import com.jcabi.xml.XML;
 import com.zerocracy.Farm;
 import com.zerocracy.Item;
 import com.zerocracy.Project;
+import com.zerocracy.Txn;
 import com.zerocracy.Xocument;
-import com.zerocracy.pm.cost.Estimates;
-import com.zerocracy.pm.cost.Ledger;
-import com.zerocracy.pm.in.Orders;
-import com.zerocracy.pm.scope.Wbs;
-import com.zerocracy.pm.staff.Roles;
 import com.zerocracy.pmo.Catalog;
 import com.zerocracy.pmo.Pmo;
 import java.io.IOException;
@@ -44,11 +39,10 @@ import org.takes.rs.xe.XeTransform;
 /**
  * Board of projects.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.13
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
+@SuppressWarnings({"PMD.ExcessiveImports", "PMD.AvoidDuplicateLiterals"})
 public final class TkBoard implements Take {
 
     /**
@@ -73,10 +67,16 @@ public final class TkBoard implements Take {
             () -> {
                 final String user = new RqUser(this.farm, req, false).value();
                 final Collection<XeSource> sources = new LinkedList<>();
-                try (final Item item = new Pmo(this.farm).acq("catalog.xml")) {
+                // @checkstyle LineLengthCheck (1 line)
+                try (final Txn pmo = new Txn(new Pmo(this.farm)); final Item item = pmo.acq("catalog.xml")) {
+                    new Catalog(pmo).bootstrap();
                     new And(
                         new FuncOf<>(
-                            input -> sources.add(this.source(input, user)),
+                            input -> sources.add(
+                                TkBoard.source(
+                                    pmo, input.xpath("@id").get(0), user
+                                )
+                            ),
                             true
                         ),
                         new Xocument(item).nodes(
@@ -91,69 +91,47 @@ public final class TkBoard implements Take {
 
     /**
      * Create source for one project.
-     * @param node XML node
+     * @param pmo PMO transaction
+     * @param pid Project id
      * @param user Current user
      * @return Source
      * @throws IOException If fails
      */
-    private XeSource source(final XML node, final String user)
-        throws IOException {
-        final Project project = this.farm.find(
-            String.format("@id='%s'", node.xpath("@id").get(0))
-        ).iterator().next();
-        final Catalog catalog = new Catalog(this.farm).bootstrap();
-        final Roles roles = new Roles(project).bootstrap();
-        final Ledger ledger = new Ledger(project).bootstrap();
+    private static XeSource source(final Project pmo, final String pid,
+        final String user) throws IOException {
+        final Catalog catalog = new Catalog(pmo);
+        final Collection<String> members = catalog.members(pid);
         return new XeAppend(
             "project",
             new XeAppend(
                 "sandbox",
-                Boolean.toString(catalog.sandbox().contains(project.pid()))
+                Boolean.toString(catalog.sandbox(pid))
             ),
-            new XeAppend("id", project.pid()),
-            new XeAppend("title", catalog.title(project.pid())),
-            new XeAppend("mine", Boolean.toString(roles.hasAnyRole(user))),
+            new XeAppend("id", pid),
+            new XeAppend("title", catalog.title(pid)),
+            new XeAppend("mine", Boolean.toString(members.contains(user))),
             new XeAppend(
                 "architects",
-                new XeTransform<>(
-                    roles.findByRole("ARC"),
-                    login -> new XeAppend("architect", login)
+                new XeAppend(
+                    "architect",
+                    catalog.architect(pid)
                 )
             ),
             new XeAppend(
                 "repositories",
                 new XeTransform<>(
-                    node.xpath("links/link[@rel='github']/@href"),
+                    catalog.links(pid, "github"),
                     repo -> new XeAppend("repository", repo)
                 )
             ),
             new XeAppend(
-                "jobs",
-                Integer.toString(new Wbs(project).bootstrap().iterate().size())
+                "languages", String.join(", ", catalog.languages(pid))
             ),
-            new XeAppend(
-                "orders",
-                Integer.toString(
-                    new Orders(project).bootstrap().iterate().size()
-                )
-            ),
-            new XeAppend(
-                "deficit",
-                Boolean.toString(ledger.deficit())
-            ),
-            new XeAppend(
-                "cash",
-                ledger.cash().add(
-                    new Estimates(project).bootstrap().total().mul(-1L)
-                ).toString()
-            ),
-            new XeAppend(
-                "members",
-                Integer.toString(
-                    new Roles(project).bootstrap().everybody().size()
-                )
-            )
+            new XeAppend("jobs", Integer.toString(catalog.jobs(pid))),
+            new XeAppend("orders", Integer.toString(catalog.orders(pid))),
+            new XeAppend("deficit", Boolean.toString(catalog.deficit(pid))),
+            new XeAppend("cash", catalog.cash(pid).toString()),
+            new XeAppend("members", Integer.toString(members.size()))
         );
     }
-
 }

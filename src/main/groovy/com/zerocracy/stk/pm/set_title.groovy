@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,11 +18,12 @@ package com.zerocracy.stk.pm
 
 import com.jcabi.xml.XML
 import com.zerocracy.Par
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
 import com.zerocracy.Farm
 import com.zerocracy.Project
 import com.zerocracy.SoftException
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pmo.Catalog
 
 def exec(Project project, XML xml) {
@@ -47,5 +48,5 @@ def exec(Project project, XML xml) {
     new Par(
       'The title changed to "%s"'
     ).say(title)
-  ).postTo(project)
+  ).postTo(new ClaimsOf(farm, project))
 }

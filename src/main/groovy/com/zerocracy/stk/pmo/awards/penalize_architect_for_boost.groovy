@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,27 +17,30 @@
 package com.zerocracy.stk.pm.cost
 
 import com.jcabi.xml.XML
+import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Policy
 import com.zerocracy.Project
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.staff.Roles
 
 def exec(Project project, XML xml) {
   new Assume(project, xml).notPmo()
   new Assume(project, xml).type('Set boost')
   ClaimIn claim = new ClaimIn(xml)
+  Farm farm = binding.variables.farm
   Roles roles = new Roles(project).bootstrap()
   if (claim.hasAuthor() && roles.hasRole(claim.author(), 'ARC')) {
     claim.copy()
-      .type('Make payment')
+      .type('Add award points')
       .param('login', claim.author())
       .param(
         'reason',
         new Par('Boosting tasks is against our principles, see §15').say()
       )
       .param('minutes', -new Policy().get('15.penalty', 10))
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   }
 }

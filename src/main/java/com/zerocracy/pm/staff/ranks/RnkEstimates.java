@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -26,9 +26,7 @@ import org.cactoos.func.UncheckedFunc;
 /**
  * Give higher rank for most expensive tasks.
  *
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.22
+ * @since 1.0
  */
 public final class RnkEstimates implements Comparator<String> {
     /**

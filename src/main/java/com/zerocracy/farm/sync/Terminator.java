@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,9 +19,12 @@ package com.zerocracy.farm.sync;
 import com.jcabi.log.Logger;
 import com.jcabi.log.VerboseRunnable;
 import com.jcabi.log.VerboseThreads;
+import com.zerocracy.Farm;
 import com.zerocracy.Project;
 import com.zerocracy.ShutUp;
+import com.zerocracy.sentry.SafeSentry;
 import java.io.Closeable;
+import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -38,9 +41,7 @@ import org.xembly.Directives;
 /**
  * Terminator.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 final class Terminator implements Closeable, Scalar<Iterable<Directive>> {
@@ -61,10 +62,17 @@ final class Terminator implements Closeable, Scalar<Iterable<Directive>> {
     private final Map<Project, String> killers;
 
     /**
+     * Farm.
+     */
+    private final Farm farm;
+
+    /**
      * Ctor.
+     * @param farm Farm
      * @param msec Seconds to give to each thread
      */
-    Terminator(final long msec) {
+    Terminator(final Farm farm, final long msec) {
+        this.farm = farm;
         this.threshold = msec;
         this.service = Executors.newCachedThreadPool(
             new VerboseThreads(
@@ -105,7 +113,10 @@ final class Terminator implements Closeable, Scalar<Iterable<Directive>> {
                 this.killers.put(project, file);
                 this.service.submit(
                     new VerboseRunnable(
-                        this.killer(project, file, lock),
+                        this.killer(
+                            project, file, lock,
+                            new WeakReference<>(Thread.currentThread())
+                        ),
                         true, true
                     )
                 );
@@ -118,29 +129,58 @@ final class Terminator implements Closeable, Scalar<Iterable<Directive>> {
      * @param project The project
      * @param file The file
      * @param lock The lock
+     * @param ref A weak reference for the Thread that acquired the lock
      * @return The runnable
+     * @checkstyle ParameterNumber (4 lines)
      */
     private Runnable killer(final Project project, final String file,
-        final Lock lock) {
-        final Thread thread = Thread.currentThread();
+        final Lock lock, final WeakReference<Thread> ref) {
         final Exception location = new IllegalStateException("Here!");
         return new RunnableOf<Object>(
             input -> {
-                if (!lock.tryLock(this.threshold, TimeUnit.MILLISECONDS)) {
-                    Logger.warn(
-                        this,
-                        // @checkstyle LineLength (1 line)
-                        "Thread %d/%s interrupted because of too long hold of \"%s\" in %s (over %d msec), %s: %[exception]s",
-                        thread.getId(), thread.getName(),
-                        file, project.pid(), this.threshold, lock, location
-                    );
-                    thread.interrupt();
-                    this.submit(project, file, lock);
+                if (lock.tryLock(this.threshold, TimeUnit.MILLISECONDS)) {
+                    lock.unlock();
+                    this.killers.remove(project);
+                } else {
+                    final Thread thread = ref.get();
+                    if (thread == null) {
+                        Logger.warn(
+                            this,
+                            // @checkstyle LineLength (1 line)
+                            "Thread disposed without proper lock unlock. Unlocking lock for \"%s\" in %s, %s: %[exception]s",
+                            file, project.pid(), lock, location
+                        );
+                        lock.unlock();
+                        this.killers.remove(project);
+                    } else {
+                        Logger.warn(
+                            this,
+                            // @checkstyle LineLength (1 line)
+                            "Thread %d/%s interrupted because of too long hold of \"%s\" in %s (over %d msec), %s: %[exception]s",
+                            thread.getId(), thread.getName(),
+                            file, project.pid(), this.threshold, lock, location
+                        );
+                        new SafeSentry(this.farm).capture(
+                            new Exception(
+                                String.format(
+                                    // @checkstyle LineLength (1 line)
+                                    "Thread %d/%s interrupted because of too long hold of \"%s\" in %s (over %d msec), %s",
+                                    thread.getId(), thread.getName(),
+                                    file, project.pid(), this.threshold, lock
+                                ),
+                                location
+                            )
+                        );
+                        thread.interrupt();
+                        this.service.submit(
+                            new VerboseRunnable(
+                                this.killer(project, file, lock, ref),
+                                true, true
+                            )
+                        );
+                    }
                 }
-                lock.unlock();
-                this.killers.remove(project);
             }
         );
     }
-
 }

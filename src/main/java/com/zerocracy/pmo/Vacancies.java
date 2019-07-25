@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,26 +16,25 @@
  */
 package com.zerocracy.pmo;
 
+import com.jcabi.xml.XML;
 import com.zerocracy.Farm;
 import com.zerocracy.Item;
 import com.zerocracy.Project;
 import com.zerocracy.Xocument;
 import java.io.IOException;
-import org.cactoos.time.DateAsText;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import org.cactoos.text.FormattedText;
+import org.cactoos.text.JoinedText;
 import org.xembly.Directives;
 
 /**
  * Available vacancies.
  *
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id $
- * @since 0.22
- * @todo #925:30min Vacancies are not rendered on `/vacancies` page.
- *  This page should list all current vacancies in all projects.
- *  Let's display vacancy author, date and text.
- * @todo #925:30min Old vacancies are not removed automatically.
- *  Let's add new stakeholder which will remove vacancies from `vacancies.xml`
- *  which are  older than 32 days.
+ * @since 1.0
  */
 public final class Vacancies {
 
@@ -81,6 +80,20 @@ public final class Vacancies {
      */
     public void add(final Project project, final String author,
         final String text) throws IOException {
+        this.add(project, author, text, ZonedDateTime.now(ZoneOffset.UTC));
+    }
+
+    /**
+     * Add new vacancy.
+     * @param project Hiring project
+     * @param author Vacancy author
+     * @param text Vacancy text
+     * @param added Added time
+     * @throws IOException If fails
+     * @checkstyle ParameterNumberCheck (4 lines)
+     */
+    public void add(final Project project, final String author,
+        final String text, final ZonedDateTime added) throws IOException {
         try (final Item item = this.item()) {
             new Xocument(item.path()).modify(
                 new Directives()
@@ -88,7 +101,7 @@ public final class Vacancies {
                     .add("vacancy")
                     .attr("project", project.pid())
                     .addIf("added")
-                    .set(new DateAsText().asString())
+                    .set(added.format(DateTimeFormatter.ISO_DATE_TIME))
                     .up()
                     .add("author")
                     .set(author)
@@ -96,6 +109,20 @@ public final class Vacancies {
                     .add("text")
                     .set(text)
             );
+        }
+    }
+
+    /**
+     * Vacancy for project.
+     * @param pid Project id
+     * @return Vacancy data
+     * @throws IOException If fails
+     */
+    public XML vacancy(final String pid) throws IOException {
+        try (final Item item = this.item()) {
+            return new Xocument(item.path())
+                .nodes(Vacancies.xpath(pid))
+                .get(0);
         }
     }
 
@@ -108,12 +135,8 @@ public final class Vacancies {
         try (final Item item = this.item()) {
             new Xocument(item.path()).modify(
                 new Directives()
-                    .xpath(
-                        String.format(
-                            "/vacancies/vacancy[@project='%s']",
-                            project.pid()
-                        )
-                    ).remove()
+                    .xpath(Vacancies.xpath(project.pid()))
+                    .remove()
             );
         }
     }
@@ -131,11 +154,44 @@ public final class Vacancies {
     }
 
     /**
+     * Remove vacancies older than 'date' param.
+     * @param date Date param
+     * @return List of project pids that had vacancies removed
+     * @throws IOException If fails
+     */
+    public Iterable<String> removeOlderThan(final Instant date)
+        throws IOException {
+        try (final Item item = this.item()) {
+            final String xpath = new FormattedText(
+                "/vacancies/vacancy[xs:dateTime(added) < xs:dateTime('%s')]",
+                date
+            ).asString();
+            final List<String> pids = new Xocument(item.path()).xpath(
+                new JoinedText("", xpath, "/@project").asString()
+            );
+            new Xocument(item.path()).modify(
+                new Directives().xpath(xpath).remove()
+            );
+            return pids;
+        }
+    }
+
+    /**
      * The item.
      * @return Item
      * @throws IOException If fails
      */
     private Item item() throws IOException {
         return this.pmo.acq("vacancies.xml");
+    }
+
+    /**
+     * Vacancy xpath.
+     *
+     * @param pid Project id
+     * @return Xpath for vacancy
+     */
+    private static String xpath(final String pid) {
+        return String.format("/vacancies/vacancy[@project='%s']", pid);
     }
 }

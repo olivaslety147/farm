@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,8 +16,8 @@
  */
 package com.zerocracy.entry;
 
-import com.ullink.slack.simpleslackapi.SlackSession;
 import com.zerocracy.Farm;
+import com.zerocracy.radars.slack.SkSession;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.cactoos.Scalar;
@@ -27,17 +27,15 @@ import org.cactoos.func.UncheckedFunc;
 /**
  * Slack sessions.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.11
+ * @since 1.0
  */
-public final class ExtSlack implements Scalar<Map<String, SlackSession>> {
+public final class ExtSlack implements Scalar<Map<String, SkSession>> {
 
     /**
      * The singleton.
      */
     private static final
-        UncheckedFunc<Farm, Map<String, SlackSession>> SINGLETON =
+        UncheckedFunc<Farm, Map<String, SkSession>> SINGLETON =
         new UncheckedFunc<>(
             new SolidFunc<>(
                 frm -> new ConcurrentHashMap<>(0)
@@ -58,7 +56,7 @@ public final class ExtSlack implements Scalar<Map<String, SlackSession>> {
     }
 
     @Override
-    public Map<String, SlackSession> value() {
+    public Map<String, SkSession> value() {
         return ExtSlack.SINGLETON.apply(this.farm);
     }
 

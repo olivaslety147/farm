@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,55 +16,127 @@
  */
 package com.zerocracy.entry;
 
+import com.jcabi.aspects.Tv;
 import com.zerocracy.Farm;
 import com.zerocracy.Project;
-import com.zerocracy.pm.ClaimOut;
-import com.zerocracy.pm.Claims;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.claims.MsgPriority;
 import com.zerocracy.pmo.Catalog;
+import com.zerocracy.sentry.SafeSentry;
 import java.io.IOException;
-import org.cactoos.iterable.Shuffled;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.cactoos.func.IoCheckedFunc;
+import org.cactoos.list.ListOf;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.quartz.SchedulerException;
 
 /**
  * Ping as quartz job.
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.21.1
+ * @since 1.0
  */
 public final class Ping implements Job {
+
+    /**
+     * Delay for ping.
+     */
+    private static final IoCheckedFunc<String, Duration> DELAY =
+        new IoCheckedFunc<>(
+            ping -> {
+                final Duration dur;
+                if ("ping 2weeks".equalsIgnoreCase(ping)
+                    || "ping daily".equalsIgnoreCase(ping)) {
+                    dur = Duration.ofHours((long) Tv.TEN);
+                } else if ("ping hourly".equalsIgnoreCase(ping)) {
+                    dur = Duration.ofHours(1L);
+                } else {
+                    dur = Duration.ofMinutes((long) Tv.FIVE);
+                }
+                return dur;
+            }
+        );
+
     /**
      * Farm.
      */
     private final Farm farm;
+
+    /**
+     * Batch size.
+     */
+    private final int batches;
+
     /**
      * Ctor.
      * @param frm Farm
+     * @param btchs Number of batches for minute pings
      */
-    public Ping(final Farm frm) {
+    public Ping(final Farm frm, final int btchs) {
         this.farm = frm;
+        this.batches = btchs;
     }
 
     @Override
     public void execute(final JobExecutionContext ctx)
         throws JobExecutionException {
         try {
-            this.post(ctx.getMergedJobDataMap().getString("claim"));
-        } catch (final IOException err) {
-            throw new JobExecutionException(err);
+            this.post(
+                ctx.getMergedJobDataMap().getString("claim"),
+                (AtomicInteger) ctx.getScheduler().getContext().get("counter")
+            );
+        } catch (final SchedulerException err) {
+            throw new JobExecutionException(
+                "Failed to obtain job counter",
+                err
+            );
+        } catch (final IOException | IllegalStateException err) {
+            new SafeSentry(this.farm).capture(err);
+            final JobExecutionException exx =
+                new JobExecutionException("Failed to execute a job", err);
+            exx.setRefireImmediately(true);
+            throw exx;
         }
     }
 
     /**
      * Post a ping.
      * @param type The type of claim to post
+     * @param counter Counter of pings
      * @throws IOException If fails
      */
-    private void post(final String type) throws IOException {
-        for (final Project project : new Shuffled<>(this.farm.find(""))) {
+    private void post(final String type,
+        final AtomicInteger counter) throws IOException {
+        final Iterable<Project> projects;
+        if (Objects.equals(type, "Ping")) {
+            projects = this.batch(counter);
+        } else {
+            projects = this.farm.find("");
+        }
+        for (final Project project : projects) {
             this.post(project, type);
         }
+    }
+
+    /**
+     * Get project list for ping claim.
+     * @param counter Counter of pings
+     * @return List of projects to ping
+     * @throws IOException In case of error
+     */
+    private Iterable<Project> batch(final AtomicInteger counter)
+        throws IOException {
+        final int batch = counter.getAndIncrement() % this.batches;
+        final List<Project> projects = new ListOf<>(this.farm.find(""));
+        final double size = (double) projects.size() / this.batches;
+        return projects.subList(
+            (int) (batch * size),
+            (int) Math.min(projects.size(), (batch + 1) * size)
+        );
     }
 
     /**
@@ -77,10 +149,13 @@ public final class Ping implements Job {
         throws IOException {
         final Catalog catalog = new Catalog(this.farm).bootstrap();
         if (catalog.exists(project.pid()) && !catalog.pause(project.pid())) {
-            final Claims claims = new Claims(project).bootstrap();
-            if (claims.iterate().isEmpty()) {
-                new ClaimOut().type(type).postTo(project);
-            }
+            new ClaimOut()
+                .type(type)
+                .param("priority", MsgPriority.LOW)
+                .postTo(
+                    new ClaimsOf(this.farm, project),
+                    Instant.now().plus(Ping.DELAY.apply(type))
+                );
         }
     }
 }

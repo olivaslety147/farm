@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,7 +19,8 @@ package com.zerocracy.tk.rfp;
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
 import com.zerocracy.Policy;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.pmo.Rfps;
 import com.zerocracy.tk.RqUser;
 import com.zerocracy.tk.RsParFlash;
@@ -35,9 +36,7 @@ import org.takes.rq.form.RqFormSmart;
 /**
  * Submit RFP.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.20
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
@@ -90,7 +89,8 @@ public final class TkSubmit implements Take {
                     ).say(rid)
                 )
                 .param("min", new Policy().get("40.min", 0))
-                .postTo(this.farm);
+                .param("reason", "RFP")
+                .postTo(new ClaimsOf(this.farm));
         }
         return new RsForward(
             new RsParFlash(

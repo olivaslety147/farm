@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,8 +18,8 @@ package com.zerocracy.tk;
 
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
+import com.zerocracy.pm.staff.ProjectsRoles;
 import com.zerocracy.pmo.People;
-import com.zerocracy.pmo.Pmo;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Locale;
@@ -37,9 +37,7 @@ import org.takes.rq.RqRequestLine;
 /**
  * User login from OAuth.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.12
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class RqUser implements Scalar<String> {
@@ -64,26 +62,8 @@ public final class RqUser implements Scalar<String> {
      * @param req Request
      * @param invited TRUE if we need a user to be invited already
      */
-    public RqUser(final Farm farm, final Request req, final boolean invited) {
-        this(new Pmo(farm), req, invited);
-    }
-
-    /**
-     * Ctor.
-     * @param pmo The PMO
-     * @param req Request
-     */
-    public RqUser(final Pmo pmo, final Request req) {
-        this(pmo, req, true);
-    }
-
-    /**
-     * Ctor.
-     * @param pmo The PMO
-     * @param req Request
-     * @param invited TRUE if we need a user to be invited already
-     */
-    public RqUser(final Pmo pmo, final Request req, final boolean invited) {
+    public RqUser(final Farm farm, final Request req,
+        final boolean invited) {
         this.user = new SolidScalar<>(
             () -> {
                 final Identity identity = new RqAuth(req).identity();
@@ -105,7 +85,10 @@ public final class RqUser implements Scalar<String> {
                 }
                 final String login = identity.properties()
                     .get("login").toLowerCase(Locale.ENGLISH);
-                if (invited && !new People(pmo).bootstrap().hasMentor(login)) {
+                final boolean owner = new ProjectsRoles(farm, login)
+                    .hasRole("PO");
+                if (invited && !new People(farm).bootstrap().hasMentor(login)
+                    && !owner) {
                     throw new RsForward(
                         new RsParFlash(
                             new Par(

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,8 +19,8 @@ package com.zerocracy.farm.reactive;
 import com.jcabi.xml.XML;
 import com.zerocracy.Project;
 import com.zerocracy.Stakeholder;
+import com.zerocracy.claims.ClaimIn;
 import com.zerocracy.farm.MismatchException;
-import com.zerocracy.pm.ClaimIn;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
@@ -29,9 +29,7 @@ import java.util.Set;
  * A stakeholder that doesn't hit the same
  * {@link MismatchException} exception twice.
  *
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.19
+ * @since 1.0
  */
 final class StkSmart implements Stakeholder {
 

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,10 +17,13 @@
 package com.zerocracy.stk.pm.staff.roles
 
 import com.jcabi.xml.XML
+import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
+import com.zerocracy.SoftException
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.staff.Roles
 
 def exec(Project project, XML xml) {
@@ -29,18 +32,23 @@ def exec(Project project, XML xml) {
   ClaimIn claim = new ClaimIn(xml)
   String login = claim.param('login')
   Roles roles = new Roles(project).bootstrap()
+  Farm farm = binding.variables.farm
   claim.reply(
     new Par('All roles were resigned from @%s in %s').say(
       login, project.pid()
     )
-  ).postTo(project)
+  ).postTo(new ClaimsOf(farm, project))
   roles.allRoles(login).each { role ->
-    roles.resign(login, role)
+    try {
+      roles.resign(login, role)
+    } catch (SoftException err) {
+      claim.reply(err.message)
+    }
     claim.copy()
       .type('Role was resigned')
       .param('login', login)
       .param('role', role)
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   }
   claim.copy()
     .type('Notify project')
@@ -50,5 +58,5 @@ def exec(Project project, XML xml) {
         'Project member @%s was resigned from all project roles: %s',
       ).say(login, claim.param('reason'))
     )
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
 }

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,6 +19,7 @@ package com.zerocracy.pm.staff.votes;
 import com.zerocracy.farm.fake.FkFarm;
 import com.zerocracy.pmo.Pmo;
 import com.zerocracy.pmo.Speed;
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import org.cactoos.list.ListOf;
 import org.hamcrest.MatcherAssert;
@@ -27,9 +28,7 @@ import org.junit.Test;
 
 /**
  * Test case for {@link VsSpeed}.
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.19
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle MagicNumber (500 line)
  */
@@ -42,12 +41,14 @@ public final class VsSpeedTest {
         new Speed(farm, slow).bootstrap().add(
             "TST000002",
             "gh:test/test#2",
-            TimeUnit.DAYS.toMinutes(9L)
+            TimeUnit.DAYS.toMinutes(9L),
+            Instant.now()
         );
         new Speed(farm, fast).bootstrap().add(
             "TST000001",
             "gh:test/test#22",
-            TimeUnit.DAYS.toMinutes(8L)
+            TimeUnit.DAYS.toMinutes(8L),
+            Instant.now()
         );
         final VsSpeed votes = new VsSpeed(
             new Pmo(farm),
@@ -67,7 +68,8 @@ public final class VsSpeedTest {
         new Speed(farm, known).bootstrap().add(
             "TST000003",
             "gh:test/test#3",
-            TimeUnit.DAYS.toMinutes(1L)
+            TimeUnit.DAYS.toMinutes(1L),
+            Instant.now()
         );
         final VsSpeed votes = new VsSpeed(
             new Pmo(farm),

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,11 +21,13 @@ import com.jcabi.s3.fake.FkBucket;
 import com.zerocracy.Farm;
 import com.zerocracy.Project;
 import com.zerocracy.RunsInThreads;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.claims.ClaimsItem;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.farm.S3Farm;
+import com.zerocracy.farm.props.PropsFarm;
 import com.zerocracy.farm.strict.StrictFarm;
 import com.zerocracy.farm.sync.SyncFarm;
-import com.zerocracy.pm.ClaimOut;
-import com.zerocracy.pm.Claims;
 import com.zerocracy.pm.scope.Wbs;
 import com.zerocracy.pmo.Pmo;
 import java.nio.file.Files;
@@ -36,9 +38,7 @@ import org.junit.Test;
 
 /**
  * Test case for {@link RdFarm}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.18
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
@@ -78,11 +78,14 @@ public final class RdFarmTest {
             Files.createTempDirectory("").toFile(),
             "some-bucket-pmo"
         );
-        try (final Farm farm = new RdFarm(new StrictFarm(new S3Farm(bucket)))) {
+        try (
+            final Farm farm =
+                new RdFarm(new StrictFarm(new PropsFarm(new S3Farm(bucket))))
+        ) {
             final Project pmo = new Pmo(farm);
-            new ClaimOut().type("hello you").postTo(pmo);
+            new ClaimOut().type("hello you").postTo(new ClaimsOf(farm));
             MatcherAssert.assertThat(
-                new Claims(pmo).iterate().iterator().hasNext(),
+                new ClaimsItem(pmo).iterate().iterator().hasNext(),
                 Matchers.equalTo(true)
             );
         }

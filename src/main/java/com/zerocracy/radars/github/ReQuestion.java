@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,6 +20,7 @@ import com.jcabi.github.Comment;
 import com.jcabi.xml.XMLDocument;
 import com.zerocracy.Farm;
 import com.zerocracy.Project;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.radars.ClaimOnQuestion;
 import com.zerocracy.radars.Question;
 import java.io.IOException;
@@ -27,9 +28,7 @@ import java.io.IOException;
 /**
  * Parse and answer the question.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class ReQuestion implements Response {
@@ -60,7 +59,7 @@ public final class ReQuestion implements Response {
             .param("repo", comment.issue().repo().coordinates())
             .param("issue", comment.issue().number())
             .param("comment", comment.number())
-            .postTo(project);
+            .postTo(new ClaimsOf(farm, project));
         return question.matches();
     }
 

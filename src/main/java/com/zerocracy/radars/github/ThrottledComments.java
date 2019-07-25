@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -32,9 +32,7 @@ import org.cactoos.text.SubText;
 /**
  * Comments that don't allow more than 5 posts from us in a row.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.19
+ * @since 1.0
  */
 public final class ThrottledComments implements Comments {
 

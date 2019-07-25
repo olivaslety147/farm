@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -23,23 +23,18 @@ import org.cactoos.iterable.ItemAt;
 import org.cactoos.iterable.Mapped;
 import org.cactoos.scalar.IoCheckedScalar;
 import org.cactoos.scalar.NumberOf;
+import org.xembly.Directives;
 
 /**
  * User options.
  *
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id $
- * @since 0.22
- * @todo #703:30min Options are not used. Election should check
- *  maxJobsInAgenda option, notify stakeholders should check notify options:
- *  notifyPublish, notifyRfps, notifyStudents. Also user should be able to
- *  download, edit and upload options.xml file on profile page.
+ * @since 1.0
  */
 public final class Options {
     /**
      * PMO.
      */
-    private final Pmo pkt;
+    private final Pmo pmo;
     /**
      * User id.
      */
@@ -50,7 +45,7 @@ public final class Options {
      * @param login User id
      */
     public Options(final Pmo pmo, final String login) {
-        this.pkt = pmo;
+        this.pmo = pmo;
         this.uid = login;
     }
 
@@ -60,23 +55,22 @@ public final class Options {
      * @throws IOException If fails
      */
     public Options bootstrap() throws IOException {
-        try (final Item team = this.item()) {
-            new Xocument(team).bootstrap("pmo/options");
+        try (final Item item = this.item()) {
+            new Xocument(item).bootstrap("pmo/options");
         }
         return this;
     }
 
     /**
-     * Max jobs in agenda or default value.
-     * @param def Default value
+     * Max jobs in agenda.
      * @return Jobs number
      * @throws IOException If fails
      */
-    public int maxJobsInAgenda(final int def) throws IOException {
+    public int maxJobsInAgenda() throws IOException {
         try (final Item item = this.item()) {
             return new IoCheckedScalar<>(
                 new ItemAt<Number>(
-                    xpath -> def,
+                    xpath -> Integer.MAX_VALUE,
                     new Mapped<>(
                         NumberOf::new,
                         new Xocument(item.path())
@@ -88,33 +82,84 @@ public final class Options {
     }
 
     /**
+     * Set max jobs in agenda.
+     * @param max Max jobs in agenda
+     * @throws IOException If fails
+     */
+    @SuppressWarnings("PMD.AvoidDuplicateLiterals")
+    public void maxJobsInAgenda(final int max) throws IOException {
+        try (final Item item = this.item()) {
+            new Xocument(item.path()).modify(
+                new Directives()
+                    .xpath("/options")
+                    .addIf("maxJobsInAgenda")
+                    .set(max)
+            );
+        }
+    }
+
+    /**
+     * Max REV jobs in agenda.
+     * @return REV jobs number
+     * @throws IOException If fails
+     */
+    public int maxRevJobsInAgenda() throws IOException {
+        try (final Item item = this.item()) {
+            return new IoCheckedScalar<>(
+                new ItemAt<Number>(
+                    xpath -> Integer.MAX_VALUE,
+                    new Mapped<>(
+                        NumberOf::new,
+                        new Xocument(item.path())
+                            .xpath("/options/maxRevJobsInAgenda/text()")
+                    )
+                )
+            ).value().intValue();
+        }
+    }
+
+    /**
+     * Set max REV jobs in agenda.
+     * @param max Max REV jobs in agenda
+     * @throws IOException If fails
+     */
+    @SuppressWarnings("PMD.AvoidDuplicateLiterals")
+    public void maxRevJobsInAgenda(final int max) throws IOException {
+        try (final Item item = this.item()) {
+            new Xocument(item.path()).modify(
+                new Directives()
+                    .xpath("/options")
+                    .addIf("maxRevJobsInAgenda")
+                    .set(max)
+            );
+        }
+    }
+
+    /**
      * Notify students option.
-     * @param def Default value
      * @return True if set
      * @throws IOException If fails
      */
-    public boolean notifyStudents(final boolean def) throws IOException {
-        return this.notify("students", def);
+    public boolean notifyStudents() throws IOException {
+        return this.notify("students", true);
     }
 
     /**
      * Notify RFPS option.
-     * @param def Default value
      * @return True if set
      * @throws IOException If fails
      */
-    public boolean notifyRfps(final boolean def) throws IOException {
-        return this.notify("rfps", def);
+    public boolean notifyRfps() throws IOException {
+        return this.notify("rfps", true);
     }
 
     /**
      * Notify publish option.
-     * @param def Default value
      * @return True if set
      * @throws IOException If fails
      */
-    public boolean notifyPublish(final boolean def) throws IOException {
-        return this.notify("publish", def);
+    public boolean notifyPublish() throws IOException {
+        return this.notify("publish", true);
     }
 
     /**
@@ -151,6 +196,6 @@ public final class Options {
      * @throws IOException If fails
      */
     private Item item() throws IOException {
-        return this.pkt.acq(String.format("options/%s.xml", this.uid));
+        return this.pmo.acq(String.format("options/%s.xml", this.uid));
     }
 }

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,27 +19,33 @@ package com.zerocracy.stk.pm.cost.funding
 import com.jcabi.xml.XML
 import com.zerocracy.Farm
 import com.zerocracy.Project
-import com.zerocracy.cash.Cash
+import com.zerocracy.claims.ClaimIn
+import com.zerocracy.claims.ClaimOut
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
-import com.zerocracy.pm.cost.Estimates
-import com.zerocracy.pm.cost.Ledger
+import com.zerocracy.farm.props.Props
 import com.zerocracy.pmo.recharge.Recharge
+import java.time.Duration
 
+/**
+ * This stakeholder automatically requests for a recharge the project if it
+ * detects a deficit.
+ *
+ * @param project Project to recharge
+ * @param xml Claim
+ */
 def exec(Project project, XML xml) {
   new Assume(project, xml).notPmo()
   new Assume(project, xml).type('Make payment', 'Ping hourly')
-  ClaimIn claim = new ClaimIn(xml)
   Farm farm = binding.variables.farm
-  Recharge recharge = new Recharge(farm, project.pid())
-  if (!recharge.exists()) {
-    return
+  if (new Recharge(farm, project).required()) {
+    ClaimOut recharge = new ClaimOut()
+      .type('Recharge project')
+      .param('triggered_by', new ClaimIn(xml).cid())
+      .unique('recharge')
+    if (!new Props(farm).has('//testing')) {
+      recharge.until(Duration.ofMinutes(5))
+    }
+    recharge.postTo(new ClaimsOf(farm, project))
   }
-  Ledger ledger = new Ledger(project).bootstrap()
-  Cash cash = ledger.cash()
-  Cash locked = new Estimates(project).bootstrap().total()
-  if (cash > locked.add(new Cash.S('$16'))) {
-    return
-  }
-  recharge.pay(claim.copy()).postTo(project)
 }

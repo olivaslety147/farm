@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,11 +17,12 @@
 package com.zerocracy.radars.slack;
 
 import com.jcabi.xml.XMLDocument;
-import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
 import com.zerocracy.Project;
+import com.zerocracy.claims.MsgPriority;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.radars.ClaimOnQuestion;
 import com.zerocracy.radars.Question;
 import java.io.IOException;
@@ -29,16 +30,14 @@ import java.io.IOException;
 /**
  * Project reaction.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class ReProject implements Reaction<SlackMessagePosted> {
 
     @Override
     public boolean react(final Farm farm, final SlackMessagePosted event,
-        final SlackSession session) throws IOException {
+        final SkSession session) throws IOException {
         final Question question = new Question(
             new XMLDocument(
                 this.getClass().getResource(
@@ -60,7 +59,8 @@ public final class ReProject implements Reaction<SlackMessagePosted> {
             .author(new SkPerson(farm, event).uid(question.invited()))
             .param("pid", project.pid())
             .param("channel", event.getChannel().getName())
-            .postTo(project);
+            .param("priority", MsgPriority.HIGH)
+            .postTo(new ClaimsOf(farm, project));
         return question.matches();
     }
 

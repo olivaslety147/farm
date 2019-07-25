@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,9 +20,12 @@ import com.jcabi.xml.XML;
 import com.zerocracy.Farm;
 import com.zerocracy.Item;
 import com.zerocracy.Par;
+import com.zerocracy.Project;
 import com.zerocracy.Xocument;
 import com.zerocracy.cash.Cash;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.pm.cost.Estimates;
+import com.zerocracy.pm.cost.Ledger;
 import com.zerocracy.pmo.Catalog;
 import com.zerocracy.pmo.Pmo;
 import java.io.IOException;
@@ -31,12 +34,10 @@ import org.xembly.Directives;
 /**
  * Recharge of a project.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.22
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
-@SuppressWarnings({ "PMD.TooManyMethods", "PMD.AvoidDuplicateLiterals" })
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.AvoidDuplicateLiterals"})
 public final class Recharge {
 
     /**
@@ -45,18 +46,18 @@ public final class Recharge {
     private final Farm farm;
 
     /**
-     * Project ID.
+     * Project.
      */
-    private final String pid;
+    private final Project pkt;
 
     /**
      * Ctor.
      * @param frm Farm
-     * @param pkt Project ID
+     * @param project Project
      */
-    public Recharge(final Farm frm, final String pkt) {
+    public Recharge(final Farm frm, final Project project) {
         this.farm = frm;
-        this.pid = pkt;
+        this.pkt = project;
     }
 
     /**
@@ -68,7 +69,7 @@ public final class Recharge {
         try (final Item item = this.item()) {
             return !new Xocument(item.path()).nodes(
                 String.format(
-                    "/catalog/project[@id='%s']/recharge", this.pid
+                    "/catalog/project[@id='%s']/recharge", this.pkt.pid()
                 )
             ).isEmpty();
         }
@@ -84,7 +85,7 @@ public final class Recharge {
         if (!this.exists()) {
             throw new IllegalArgumentException(
                 String.format(
-                    "Recharge %s doesn't exist, can't pay", this.pid
+                    "Recharge %s doesn't exist, can't pay", this.pkt.pid()
                 )
             );
         }
@@ -92,7 +93,7 @@ public final class Recharge {
         try (final Item item = this.item()) {
             xml = new Xocument(item.path()).nodes(
                 String.format(
-                    "/catalog/project[@id='%s']/recharge", this.pid
+                    "/catalog/project[@id='%s']/recharge", this.pkt.pid()
                 )
             ).get(0);
         }
@@ -108,7 +109,7 @@ public final class Recharge {
         final String customer = xml.xpath("code/text()").get(0);
         final String tid = new Stripe(this.farm).charge(
             customer, amount,
-            new Par("Project %s was recharged").say(this.pid)
+            new Par("Project %s was recharged").say(this.pkt.pid())
         );
         return claim
             .type("Funded by Stripe")
@@ -125,7 +126,7 @@ public final class Recharge {
         if (!this.exists()) {
             throw new IllegalArgumentException(
                 String.format(
-                    "Recharge %s doesn't exist, can't delete", this.pid
+                    "Recharge %s doesn't exist, can't delete", this.pkt.pid()
                 )
             );
         }
@@ -133,7 +134,7 @@ public final class Recharge {
             new Xocument(item.path()).modify(
                 new Directives().xpath(
                     String.format(
-                        "/catalog/project[@id='%s']/recharge", this.pid
+                        "/catalog/project[@id='%s']/recharge", this.pkt.pid()
                     )
                 ).strict(1).remove()
             );
@@ -149,7 +150,8 @@ public final class Recharge {
         if (!this.exists()) {
             throw new IllegalArgumentException(
                 String.format(
-                    "Recharge %s doesn't exist, can't read amount", this.pid
+                    "Recharge %s doesn't exist, can't read amount",
+                    this.pkt.pid()
                 )
             );
         }
@@ -158,11 +160,23 @@ public final class Recharge {
                 new Xocument(item.path()).xpath(
                     String.format(
                         "/catalog/project[@id='%s']/recharge/amount/text()",
-                        this.pid
+                        this.pkt.pid()
                     )
                 ).get(0)
             );
         }
+    }
+
+    /**
+     * Does recharge required?
+     * @return TRUE if required
+     * @throws IOException If fails
+     */
+    public boolean required() throws IOException {
+        final Cash cash = new Ledger(this.farm, this.pkt).bootstrap().cash();
+        final Cash locked = new Estimates(this.farm, this.pkt)
+            .bootstrap().total();
+        return cash.compareTo(locked.add(new Cash.S("$16"))) < 0;
     }
 
     /**
@@ -174,10 +188,11 @@ public final class Recharge {
      */
     public void set(final String system, final Cash amount,
         final String code) throws IOException {
-        if (!new Catalog(this.farm).bootstrap().exists(this.pid)) {
+        if (!new Catalog(this.farm).bootstrap().exists(this.pkt.pid())) {
             throw new IllegalArgumentException(
                 String.format(
-                    "Project %s doesn't exist in catalog, can't set", this.pid
+                    "Project %s doesn't exist in catalog, can't set",
+                    this.pkt.pid()
                 )
             );
         }
@@ -189,7 +204,7 @@ public final class Recharge {
                 new Directives()
                     .xpath(
                         String.format(
-                            "/catalog/project[@id='%s']", this.pid
+                            "/catalog/project[@id='%s']", this.pkt.pid()
                         )
                     )
                     .add("recharge")

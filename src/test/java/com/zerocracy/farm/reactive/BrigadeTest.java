@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,14 +18,16 @@ package com.zerocracy.farm.reactive;
 
 import com.jcabi.xml.XML;
 import com.jcabi.xml.XMLDocument;
+import com.zerocracy.Farm;
 import com.zerocracy.Project;
 import com.zerocracy.Stakeholder;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.claims.ClaimsItem;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.farm.MismatchException;
-import com.zerocracy.farm.fake.FkFarm;
 import com.zerocracy.farm.fake.FkProject;
 import com.zerocracy.farm.fake.FkStakeholder;
-import com.zerocracy.pm.ClaimOut;
-import com.zerocracy.pm.Claims;
+import com.zerocracy.farm.props.PropsFarm;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -42,9 +44,7 @@ import org.junit.Test;
 
 /**
  * Test case for {@link Brigade}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.11
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
@@ -61,22 +61,28 @@ public final class BrigadeTest {
                     "\n",
                     "import com.zerocracy.Project",
                     "import com.jcabi.xml.XML",
-                    "import com.zerocracy.pm.ClaimOut",
+                    "import com.zerocracy.claims.ClaimOut",
+                    "import com.zerocracy.Farm",
+                    "import com.zerocracy.entry.ClaimsOf",
                     "def exec(Project project, XML xml) {",
-                    "new ClaimOut().type('one more').postTo(project)",
+                    "Farm farm = binding.variables.farm",
+                    "new ClaimOut().type('one more')",
+                    ".postTo(new ClaimsOf(farm, project))",
                     "}"
                 ),
                 file.toFile()
             )
         ).intValue();
         final Project project = new FkProject();
-        new ClaimOut().type("just some fun").postTo(project);
-        final Claims claims = new Claims(project).bootstrap();
+        final Farm farm = new PropsFarm();
+        new ClaimOut().type("just some fun")
+            .postTo(new ClaimsOf(farm, project));
+        final ClaimsItem claims = new ClaimsItem(project).bootstrap();
         final XML xml = claims.iterate().iterator().next();
         final Brigade brigade = new Brigade(
             new StkGroovy(
                 new InputOf(file), "brigadetest-parsesgroovy",
-                new FkFarm()
+                farm
             )
         );
         brigade.apply(project, xml);
@@ -89,13 +95,15 @@ public final class BrigadeTest {
     @Test
     public void runsGroovyScript() throws Exception {
         final Project project = new FkProject();
-        new ClaimOut().type("Hello").token("test;notoken").postTo(project);
-        final Claims claims = new Claims(project).bootstrap();
+        new ClaimOut().type("Hello").token("test;notoken").postTo(
+            new ClaimsOf(new PropsFarm(), project)
+        );
+        final ClaimsItem claims = new ClaimsItem(project).bootstrap();
         final XML xml = claims.iterate().iterator().next();
         final Brigade brigade = new Brigade(
             new StkRuntime(
                 com.zerocracy.stk.hello.class,
-                new FkFarm()
+                new PropsFarm()
             )
         );
         brigade.apply(project, xml);

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,13 +16,12 @@
  */
 package com.zerocracy.radars.slack;
 
-import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 import com.zerocracy.Farm;
 import com.zerocracy.SoftException;
 import com.zerocracy.farm.props.Props;
+import com.zerocracy.sentry.SafeSentry;
 import com.zerocracy.tools.TxtUnrecoverableError;
-import io.sentry.Sentry;
 import java.io.IOException;
 import org.cactoos.func.FuncOf;
 import org.cactoos.func.FuncWithFallback;
@@ -31,9 +30,7 @@ import org.cactoos.func.IoCheckedFunc;
 /**
  * Safe reaction.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  */
 public final class ReSafe implements Reaction<SlackMessagePosted> {
 
@@ -52,7 +49,7 @@ public final class ReSafe implements Reaction<SlackMessagePosted> {
 
     @Override
     public boolean react(final Farm farm, final SlackMessagePosted event,
-        final SlackSession session) throws IOException {
+        final SkSession session) throws IOException {
         return new IoCheckedFunc<>(
             new FuncWithFallback<Boolean, Boolean>(
                 smart -> {
@@ -60,7 +57,7 @@ public final class ReSafe implements Reaction<SlackMessagePosted> {
                     try {
                         result = this.origin.react(farm, event, session);
                     } catch (final SoftException ex) {
-                        session.sendMessage(
+                        session.send(
                             event.getChannel(), ex.getMessage()
                         );
                     }
@@ -68,7 +65,7 @@ public final class ReSafe implements Reaction<SlackMessagePosted> {
                 },
                 new FuncOf<>(
                     throwable -> {
-                        session.sendMessage(
+                        session.send(
                             event.getChannel(),
                             new TxtUnrecoverableError(
                                 throwable, new Props(farm),
@@ -80,7 +77,7 @@ public final class ReSafe implements Reaction<SlackMessagePosted> {
                                 )
                             ).asString()
                         );
-                        Sentry.capture(throwable);
+                        new SafeSentry(farm).capture(throwable);
                         throw new IOException(throwable);
                     }
                 )

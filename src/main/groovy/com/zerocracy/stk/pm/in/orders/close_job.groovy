@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -23,9 +23,10 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.SoftException
+import com.zerocracy.claims.ClaimIn
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.entry.ExtGithub
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
 import com.zerocracy.pm.in.Orders
 import com.zerocracy.pm.scope.Wbs
 import com.zerocracy.pm.staff.Roles
@@ -44,11 +45,12 @@ def exec(Project project, XML xml) {
   String author = issue.author().login().toLowerCase(Locale.ENGLISH)
   if (!wbs.exists(job)) {
     new Blanks(farm, author).bootstrap().add(project, job, issue.pull ? 'pull-request' : 'issue')
-    throw new SoftException(
-      new Par('The job is not in WBS, won\'t close the order').say()
-    )
+    claim.copy()
+      .type('Job was declined')
+      .token("job;${job}")
+      .postTo(new ClaimsOf(farm, project))
   }
-  Orders orders = new Orders(project).bootstrap()
+  Orders orders = new Orders(farm, project).bootstrap()
   if (job.startsWith('gh:') && orders.assigned(job)) {
     if (issue.open) {
       throw new SoftException(
@@ -58,18 +60,25 @@ def exec(Project project, XML xml) {
     if (author != claim.author()
       && !issue.pull
       && !new Roles(project).bootstrap().hasRole(claim.author(), 'PO', 'ARC')) {
+      String message
+      if (issue.open) {
+        message = new Par(
+          '@%s you are not allowed to close this job,',
+          'I won\'t close the order;',
+          'ask @%s (its author), ARC or PO do close it'
+        ).say(claim.author(), issue.author().login())
+      } else {
+        message = new Par(
+          '@%s the issue is closed not by @%s (its creator);',
+          'I won\'t close the order;',
+          'please, re-open it and ask @%2$s to close it'
+        ).say(claim.author(), issue.author().login())
+      }
       claim.copy()
         .type('Notify job')
         .token("job;${job}")
-        .param(
-          'message',
-          new Par(
-            '@%s the issue is closed not by @%s (its creator);',
-            'I won\'t close the order;',
-            'please, re-open it and ask @%2$s to close it'
-          ).say(claim.author(), issue.author().login())
-        )
-        .postTo(project)
+        .param('message', message)
+        .postTo(new ClaimsOf(farm, project))
       return
     }
   }
@@ -77,10 +86,11 @@ def exec(Project project, XML xml) {
     claim.copy()
       .type('Finish order')
       .param('reason', 'Job was closed, order is finished')
-      .postTo(project)
+      .param('closed', claim.created().toInstant().toString())
+      .postTo(new ClaimsOf(farm, project))
   } else {
     claim.copy()
       .type('Remove job from WBS')
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   }
 }

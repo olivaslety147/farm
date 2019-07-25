@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,8 +21,9 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.SoftException
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pmo.People
 
 def exec(Project pmo, XML xml) {
@@ -32,20 +33,21 @@ def exec(Project pmo, XML xml) {
   People people = new People(farm).bootstrap()
   ClaimIn claim = new ClaimIn(xml)
   String author = claim.author()
-  if (!claim.hasParam('bank') || !claim.hasParam('wallet')) {
+  if (!claim.hasParam('wallet')) {
     String wallet = people.wallet(author)
     String bank = people.bank(author)
     if (wallet.empty || bank.empty) {
       throw new SoftException(
         new Par(
           'Your wallet is not configured yet.',
-          'To configure it just say `wallet paypal me@example.com`, for example.'
+          'To configure it just say `wallet zld_address`, for example.',
+          'See §20'
         ).say()
       )
     }
     throw new SoftException(
       new Par(
-        'Your wallet is `%s` at "%s"'
+        'Your wallet is `%s` at `%s`'
       ).say(people.wallet(author), people.bank(author))
     )
   }
@@ -58,17 +60,16 @@ def exec(Project pmo, XML xml) {
       ).say()
     )
   }
-  String bank = claim.param('bank')
   String wallet = claim.param('wallet')
-  people.wallet(author, bank, wallet)
+  people.wallet(author, wallet)
   claim.copy().type('Notify PMO').param(
     'message', new Par(
-      'The wallet was modified by @%s, set to `%s` at `%s`'
-    ).say(author, wallet, bank)
-  ).postTo(pmo)
+      'The wallet was modified by @%s, set to `%s`'
+    ).say(author, wallet)
+  ).postTo(new ClaimsOf(farm))
   claim.reply(
     new Par(
-      'Wallet of @%s set to `%s:%s`'
-    ).say(author, bank, wallet)
-  ).postTo(pmo)
+      'Wallet of @%s set to `%s`'
+    ).say(author, wallet)
+  ).postTo(new ClaimsOf(farm))
 }

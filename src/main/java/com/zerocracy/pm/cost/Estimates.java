@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,6 +16,7 @@
  */
 package com.zerocracy.pm.cost;
 
+import com.zerocracy.Farm;
 import com.zerocracy.Item;
 import com.zerocracy.Par;
 import com.zerocracy.Project;
@@ -23,6 +24,7 @@ import com.zerocracy.SoftException;
 import com.zerocracy.Xocument;
 import com.zerocracy.cash.Cash;
 import com.zerocracy.cash.CashParsingException;
+import com.zerocracy.cash.Currency;
 import com.zerocracy.pm.in.Orders;
 import com.zerocracy.pm.scope.Wbs;
 import com.zerocracy.pm.staff.Roles;
@@ -32,19 +34,45 @@ import java.util.LinkedList;
 import org.cactoos.collection.Mapped;
 import org.cactoos.scalar.IoCheckedScalar;
 import org.cactoos.scalar.Reduced;
+import org.cactoos.scalar.Ternary;
 import org.cactoos.time.DateAsText;
 import org.xembly.Directives;
 
 /**
  * Cost estimates.
+ * <p>
+ * Estimate is an absolute cash value (not minutes of work)
+ * which will be payed for a job on complete. It represents current state of
+ * <i>pending payments</i>: how much cash will be taken from project
+ * funds to pay for orders.<br/>
+ * For example this estimate:
+ * <pre>
+ * <code>&lt;order id="gh:yegor256/pdd#3"&gt;
+ *   &lt;cash&gt;$15&lt;/cash&gt;
+ *   &lt;created&gt;2016-12-29T09:03:21.684Z&lt;/created&gt;
+ *   &lt;role&gt;REV&lt;/role&gt;
+ * &lt;/order&gt;
+ * </code>
+ * </pre>
+ * means that job {@code gh:yegor256/pdd#3} was estimated in $15 as a
+ * code-review task.<br/>
+ * Project estimates locks a cash from budget, so if estimated value is
+ * bigger that project's cash, project will be turned into deficit mode.
+ * </p>
+ * <p>
+ * Estimate can be cleaned from {@link com.zerocracy.farm.ruled.RdAuto},
+ * see {@code 03-estimates-remove.xsl} in datum repo.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.10
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
-@SuppressWarnings({ "PMD.TooManyMethods", "PMD.AvoidDuplicateLiterals"})
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.AvoidDuplicateLiterals"})
 public final class Estimates {
+
+    /**
+     * Farm.
+     */
+    private final Farm farm;
 
     /**
      * Project.
@@ -53,9 +81,11 @@ public final class Estimates {
 
     /**
      * Ctor.
+     * @param farm Farm
      * @param pkt Project
      */
-    public Estimates(final Project pkt) {
+    public Estimates(final Farm farm, final Project pkt) {
+        this.farm = farm;
         this.project = pkt;
     }
 
@@ -83,10 +113,25 @@ public final class Estimates {
      * @throws IOException If fails
      */
     public Cash total() throws IOException {
-        try (final Item wbs = this.item()) {
-            return new Cash.S(
-                new Xocument(wbs.path()).xpath("/estimates/@total").get(0)
-            );
+        try (final Item item = this.item()) {
+            final Xocument xoc = new Xocument(item);
+            return new IoCheckedScalar<Cash>(
+                new Ternary<>(
+                    new IoCheckedScalar<>(
+                        new Reduced<Cash, Cash>(
+                            Cash.ZERO,
+                            Cash::add,
+                            new Mapped<>(
+                                Cash.S::new,
+                                xoc.xpath("//order/cash/text()")
+                            )
+                        )
+                    ).value(),
+                    Cash::unified,
+                    csh -> csh,
+                    csh -> csh.exchange(Currency.USD)
+                )
+            ).value();
         }
     }
 
@@ -98,7 +143,7 @@ public final class Estimates {
      */
     public void update(final String job, final Cash cash)
         throws IOException {
-        final Orders orders = new Orders(this.project).bootstrap();
+        final Orders orders = new Orders(this.farm, this.project).bootstrap();
         if (!orders.assigned(job)) {
             throw new SoftException(
                 new Par(
@@ -106,8 +151,8 @@ public final class Estimates {
                 ).say(job)
             );
         }
-        if (this.total()
-            .compareTo(new Ledger(this.project).bootstrap().cash()) > 0) {
+        final Ledger ledger = new Ledger(this.farm, this.project).bootstrap();
+        if (this.total().compareTo(ledger.cash()) > 0) {
             final Roles roles = new Roles(this.project).bootstrap();
             final Collection<String> owners = new LinkedList<>();
             owners.addAll(roles.findByRole("ARC"));
@@ -138,21 +183,6 @@ public final class Estimates {
                     .add("created").set(new DateAsText().asString()).up()
                     .add("cash")
                     .set(cash)
-            );
-            xoc.modify(
-                new Directives().xpath("/estimates").attr(
-                    "total",
-                    new IoCheckedScalar<>(
-                        new Reduced<Cash, Cash>(
-                            Cash.ZERO,
-                            Cash::add,
-                            new Mapped<>(
-                                Cash.S::new,
-                                xoc.xpath("//order/cash/text()")
-                            )
-                        )
-                    ).value()
-                )
             );
         }
     }
@@ -206,5 +236,4 @@ public final class Estimates {
     private Item item() throws IOException {
         return this.project.acq("estimates.xml");
     }
-
 }

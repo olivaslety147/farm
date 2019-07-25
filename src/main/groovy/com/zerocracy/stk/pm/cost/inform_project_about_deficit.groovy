@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,8 +21,9 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.cash.Cash
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.cost.Estimates
 import com.zerocracy.pm.cost.Ledger
 
@@ -30,9 +31,9 @@ def exec(Project project, XML xml) {
   new Assume(project, xml).notPmo()
   new Assume(project, xml).type('Ping')
   ClaimIn claim = new ClaimIn(xml)
-  Ledger ledger = new Ledger(project).bootstrap()
+  Ledger ledger = new Ledger(farm, project).bootstrap()
   Cash cash = ledger.cash()
-  Cash locked = new Estimates(project).bootstrap().total()
+  Cash locked = new Estimates(farm, project).bootstrap().total()
   Farm farm = binding.variables.farm
   if (ledger.deficit() && cash > locked) {
     ledger.deficit(false)
@@ -48,7 +49,7 @@ def exec(Project project, XML xml) {
           'we will continue to assign jobs to performers.',
         ).say(project.pid(), cash, locked)
       )
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   }
   if (!ledger.deficit() && cash < locked) {
     ledger.deficit(true)
@@ -65,6 +66,6 @@ def exec(Project project, XML xml) {
           'please, [fund the project](/p/%1$s) ASAP'
         ).say(project.pid(), cash, locked)
       )
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
   }
 }

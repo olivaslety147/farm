@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,8 +21,9 @@ import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Policy
 import com.zerocracy.Project
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.staff.Roles
 import com.zerocracy.pmo.Awards
 import com.zerocracy.pmo.Catalog
@@ -33,7 +34,7 @@ def exec(Project project, XML xml) {
   new Assume(project, xml).type('Ping hourly')
   Farm farm = binding.variables.farm
   Catalog catalog = new Catalog(farm).bootstrap()
-  if (!catalog.sandbox().contains(project.pid())) {
+  if (!catalog.sandbox(project.pid())) {
     return
   }
   ClaimIn claim = new ClaimIn(xml)
@@ -41,6 +42,16 @@ def exec(Project project, XML xml) {
   Roles roles = new Roles(project).bootstrap()
   roles.everybody().each { uid ->
     if (!people.hasMentor(uid)) {
+      return
+    }
+    if (uid == 'victornoel') {
+      // @todo #2030:30min Reimplement this stakeholder in such way:
+      //  it should react to 'Reputation was updated' for the user,
+      //  and if it was less than 1024 but becomes greater than 1024 then
+      //  kick out user from sandbox projects. If user decided to join
+      //  sandbox project when he/she has more than 1024 reputation,
+      //  then we should not kick out such user.
+      //  Use 33.sandbox-rep-threshold instead of 1024 like in this stk.
       return
     }
     if (roles.hasRole(uid, 'PO', 'ARC')) {
@@ -63,7 +74,7 @@ def exec(Project project, XML xml) {
           reputation, uid, threshold
         )
       )
-      .postTo(project)
+      .postTo(new ClaimsOf(farm, project))
     claim.copy().type('Notify user').token("user;${uid}").param(
       'message',
       new Par(
@@ -74,12 +85,12 @@ def exec(Project project, XML xml) {
         'feel free to complete them;',
         'you are welcome to join [other](/board) non-sandbox projects!'
       ).say(reputation, threshold, project.pid())
-    ).postTo(project)
+    ).postTo(new ClaimsOf(farm, project))
     claim.copy().type('Notify PMO').param(
       'message', new Par(
         'The user @%s was kicked out of sandbox project %s',
         'because of too high reputation %d (over %d)'
       ).say(uid, project.pid(), reputation, threshold)
-    ).postTo(project)
+    ).postTo(new ClaimsOf(farm, project))
   }
 }

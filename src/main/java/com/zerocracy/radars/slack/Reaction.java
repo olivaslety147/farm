@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,7 +16,6 @@
  */
 package com.zerocracy.radars.slack;
 
-import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackEvent;
 import com.zerocracy.Farm;
 import java.io.IOException;
@@ -24,10 +23,8 @@ import java.io.IOException;
 /**
  * React to Slack message.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
  * @param <T> Type of event
- * @since 0.1
+ * @since 1.0
  */
 public interface Reaction<T extends SlackEvent> {
 
@@ -39,7 +36,7 @@ public interface Reaction<T extends SlackEvent> {
      * @return TRUE if reacted
      * @throws IOException If fails on I/O
      */
-    boolean react(Farm farm, T event, SlackSession session) throws IOException;
+    boolean react(Farm farm, T event, SkSession session) throws IOException;
 
     /**
      * Reactions chained.
@@ -59,7 +56,7 @@ public interface Reaction<T extends SlackEvent> {
         }
         @Override
         public boolean react(final Farm farm, final T event,
-            final SlackSession session) throws IOException {
+            final SkSession session) throws IOException {
             boolean done = false;
             for (final Reaction<T> reaction : this.reactions) {
                 done = reaction.react(farm, event, session);

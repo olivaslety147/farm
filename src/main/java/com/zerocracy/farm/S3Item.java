@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -24,6 +24,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
 import java.util.Date;
@@ -35,9 +36,7 @@ import org.cactoos.io.InputOf;
 /**
  * Item in S3.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @EqualsAndHashCode(of = {"ocket", "temp"})
@@ -95,12 +94,19 @@ final class S3Item implements Item {
             if (this.ocket.exists() && (!this.temp.toFile().exists()
                 || this.expired())) {
                 final long start = System.currentTimeMillis();
+                final Path tloc = Files.createTempFile(
+                    this.getClass().getSimpleName(),
+                    ".tmp"
+                );
                 this.ocket.read(
                     Files.newOutputStream(
-                        this.temp,
+                        tloc,
                         StandardOpenOption.CREATE,
                         StandardOpenOption.TRUNCATE_EXISTING
                     )
+                );
+                Files.move(
+                    tloc, this.temp, StandardCopyOption.REPLACE_EXISTING
                 );
                 Files.setLastModifiedTime(
                     this.temp,

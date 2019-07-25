@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,6 +16,7 @@
  */
 package com.zerocracy.pmo;
 
+import com.jcabi.aspects.Tv;
 import com.jcabi.log.Logger;
 import com.jcabi.xml.XML;
 import com.zerocracy.Farm;
@@ -24,27 +25,30 @@ import com.zerocracy.Par;
 import com.zerocracy.Xocument;
 import com.zerocracy.cash.Cash;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
-import java.util.Date;
 import java.util.Iterator;
-import java.util.concurrent.TimeUnit;
 import org.cactoos.collection.Joined;
 import org.cactoos.collection.Sorted;
+import org.cactoos.io.InputOf;
+import org.cactoos.io.Sha256DigestOf;
 import org.cactoos.iterable.ItemAt;
 import org.cactoos.iterable.Mapped;
 import org.cactoos.scalar.IoCheckedScalar;
 import org.cactoos.scalar.Reduced;
-import org.cactoos.time.DateAsText;
-import org.cactoos.time.DateOf;
+import org.cactoos.text.HexOf;
 import org.xembly.Directive;
 import org.xembly.Directives;
 
 /**
  * Debts.
+ * <p>
+ * When Zerocrat fails to pay, for any reason,
+ * the payment amount will be added to 'debts'.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.21
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings({"PMD.AvoidDuplicateLiterals", "PMD.TooManyMethods"})
@@ -106,16 +110,18 @@ public final class Debts {
                                     xml.xpath("details/text()").get(0),
                                     xml.xpath("reason/text()").get(0)
                                 );
-                                final Date created = new DateOf(
+                                final Instant created = Instant.parse(
                                     xml.xpath("created/text()").get(0)
-                                ).value();
+                                );
                                 return new Directives().add("item")
                                     .add("ago")
                                     .set(
                                         Logger.format(
                                             "%[ms]s",
-                                            System.currentTimeMillis()
-                                                - created.getTime()
+                                            Duration.between(
+                                                created,
+                                                Instant.now()
+                                            ).toMillis()
                                         )
                                     )
                                     .up()
@@ -164,7 +170,7 @@ public final class Debts {
      */
     public void add(final String uid, final Cash amount,
         final String details, final String reason) throws IOException {
-        this.add(uid, amount, details, reason, new Date());
+        this.add(uid, amount, details, reason, Instant.now());
     }
 
     /**
@@ -178,7 +184,7 @@ public final class Debts {
      * @checkstyle ParameterNumberCheck (5 lines)
      */
     public void add(final String uid, final Cash amount,
-        final String details, final String reason, final Date created)
+        final String details, final String reason, final Instant created)
         throws IOException {
         try (final Item item = this.item()) {
             new Xocument(item.path()).modify(
@@ -190,7 +196,7 @@ public final class Debts {
                     .addIf("items")
                     .add("item")
                     .add("created")
-                    .set(new DateAsText(created).asString())
+                    .set(created.toString())
                     .up()
                     .add("amount").set(amount).up()
                     .add("details").set(details).up()
@@ -281,7 +287,7 @@ public final class Debts {
                     )
                     .strict(1)
                     .xpath("attempt").xset(". + 1").up()
-                    .addIf("created").set(new DateAsText().asString()).up()
+                    .addIf("created").set(Instant.now().toString()).up()
                     .addIf("reason").set(reason)
             );
         }
@@ -300,27 +306,30 @@ public final class Debts {
             );
         }
         try (final Item item = this.item()) {
-            final Date failed = new DateOf(
+            final Instant failed = Instant.parse(
                 new Xocument(item.path()).xpath(
                     String.format(
                         "/debts/debt[@login='%s']/failure/created/text()", uid
                     ),
                     "2000-01-01T00:00:00Z"
                 )
-            ).value();
-            return System.currentTimeMillis() - failed.getTime()
-                > TimeUnit.DAYS.toMillis(1L);
+            );
+            return failed.isBefore(Instant.now().minus(Duration.ofDays(1)));
         }
     }
 
     /**
      * Get all users who have debts.
+     * @param filter Additional filter
      * @return Logins
      * @throws IOException If fails
      */
-    public Collection<String> iterate() throws IOException {
+    public Collection<String> iterate(final String filter)
+        throws IOException {
         try (final Item item = this.item()) {
-            return new Xocument(item).xpath("/debts/debt/@login");
+            return new Xocument(item).xpath(
+                String.format("/debts/debt[%s]/@login", filter)
+            );
         }
     }
 
@@ -345,7 +354,7 @@ public final class Debts {
      * @return True if older
      * @throws IOException If fails
      */
-    public boolean olderThan(final String uid, final Date date)
+    public boolean olderThan(final String uid, final Instant date)
         throws IOException {
         if (!this.exists(uid)) {
             throw new IllegalArgumentException(
@@ -356,17 +365,51 @@ public final class Debts {
             final String xpath = String.format(
                 "/debts/debt[@login='%s']/items/item/created/text()", uid
             );
-            return new IoCheckedScalar<Date>(
+            return new IoCheckedScalar<>(
                 new ItemAt<>(
                     new Sorted<>(
                         new Mapped<>(
-                            (String val) -> new DateOf(val).value(),
+                            Instant::parse,
                             new Xocument(item.path()).xpath(xpath)
                         )
                     )
                 )
-            ).value().getTime() < date.getTime();
+            ).value().isBefore(date);
         }
+    }
+
+    /**
+     * Hash of all debts.
+     * @param uid Login
+     * @return Hash string
+     * @throws IOException If fails
+     */
+    public String hash(final String uid) throws IOException {
+        final String str;
+        try (final Item item = this.item()) {
+            str = new IoCheckedScalar<>(
+                new Reduced<>(
+                    new StringBuilder(Tv.HUNDRED),
+                    (acc, debt) -> acc.append(
+                        String.join(
+                            "",
+                            debt.xpath("created/text()").get(0),
+                            debt.xpath("amount/text()").get(0),
+                            debt.xpath("details/text()").get(0),
+                            debt.xpath("reason/text()").get(0)
+                        )
+                    ),
+                    new Xocument(item.path()).nodes(
+                        String.format(
+                            "/debts/debt[@login='%s']/items/item", uid
+                        )
+                    )
+                )
+            ).value().toString();
+        }
+        return new HexOf(
+            new Sha256DigestOf(new InputOf(str, StandardCharsets.UTF_8))
+        ).asString();
     }
 
     /**
@@ -377,5 +420,4 @@ public final class Debts {
     private Item item() throws IOException {
         return this.pmo.acq("debts.xml");
     }
-
 }

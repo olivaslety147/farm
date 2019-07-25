@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,6 +17,7 @@
 package com.zerocracy.pm.staff.ranks;
 
 import com.zerocracy.farm.fake.FkProject;
+import com.zerocracy.farm.props.PropsFarm;
 import com.zerocracy.pm.cost.Boosts;
 import java.util.Arrays;
 import java.util.List;
@@ -27,16 +28,14 @@ import org.junit.Test;
 /**
  * Test case for {@link RnkBoost}.
  *
- * @author Kirill (g4s8.public@gmail.com)
- * @version $Id$
- * @since 0.18.8
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  */
 public final class RnkBoostTest {
     @Test
     public void order() throws Exception {
         final FkProject project = new FkProject();
-        final Boosts boosts = new Boosts(project).bootstrap();
+        final Boosts boosts = new Boosts(new PropsFarm(), project).bootstrap();
         final String first = "gh:test/test#1";
         final List<String> list = Arrays.asList(
             "gh:test/test#4",

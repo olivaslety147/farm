@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,14 +19,16 @@ package com.zerocracy.stk.pm.comm
 import com.jcabi.log.Logger
 import com.jcabi.xml.XML
 import com.ullink.slack.simpleslackapi.SlackChannel
-import com.ullink.slack.simpleslackapi.SlackSession
 import com.ullink.slack.simpleslackapi.SlackUser
 import com.zerocracy.Farm
 import com.zerocracy.Project
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.entry.ExtSlack
 import com.zerocracy.farm.Assume
 import com.zerocracy.farm.props.Props
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
+import com.zerocracy.radars.slack.SkSession
+
 // Token must look like: slack;C43789437;yegor256;direct
 
 def exec(Project project, XML xml) {
@@ -47,43 +49,43 @@ def exec(Project project, XML xml) {
     Logger.info(this, 'Message to Slack [%s]: %s', claim.token(), message)
     return
   }
-  SlackSession session = session(parts[1])
+  SkSession session = session(parts[1])
   if (parts.length > 2) {
     if (parts.length > 3) {
-      SlackUser user = session.findUserById(parts[2])
+      SlackUser user = session.user(parts[2])
       if (user == null) {
         claim.copy()
           .type('Error')
           .param('message', "Can't find ${parts[2]} in Slack session for ${parts[1]}")
-          .postTo(project)
+          .postTo(new ClaimsOf(farm, project))
         return
       }
-      session.sendMessage(
+      session.send(
         session.openDirectMessageChannel(user).reply.slackChannel,
         message
       )
     } else {
-      SlackChannel channel = session.findChannelById(parts[1])
-      SlackUser user = session.findUserById(parts[2])
+      SlackChannel channel = session.channel(parts[1])
+      SlackUser user = session.user(parts[2])
       if (user == null) {
         claim.copy()
           .type('Error')
           .param('message', "Can't find ${parts[2]} in Slack session for ${parts[1]}")
-          .postTo(project)
+          .postTo(new ClaimsOf(farm, project))
         return
       }
-      session.sendMessage(channel, "<@${user.id}> ${message}")
+      session.send(channel, "<@${user.id}> ${message}")
     }
   } else {
-    SlackChannel channel = session.findChannelById(parts[1])
-    session.sendMessage(channel, message)
+    SlackChannel channel = session.channel(parts[1])
+    session.send(channel, message)
   }
 }
 
-SlackSession session(String channel) {
+SkSession session(String channel) {
   Farm farm = binding.variables.farm
-  for (SlackSession session : new ExtSlack(farm).value().values()) {
-    if (belongsTo(session, channel)) {
+  for (SkSession session : new ExtSlack(farm).value().values()) {
+    if (session.hasChannel(channel)) {
       return session
     }
   }
@@ -93,13 +95,4 @@ SlackSession session(String channel) {
       channel, new ExtSlack(farm).value().size()
     )
   )
-}
-
-static boolean belongsTo(SlackSession session, String channel) {
-  for (SlackChannel opt : session.channels) {
-    if (opt.id == channel) {
-      return true
-    }
-  }
-  false
 }

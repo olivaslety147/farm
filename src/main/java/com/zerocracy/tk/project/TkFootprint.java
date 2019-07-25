@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -25,7 +25,7 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Sorts;
 import com.zerocracy.Farm;
 import com.zerocracy.Project;
-import com.zerocracy.pm.Footprint;
+import com.zerocracy.claims.Footprint;
 import com.zerocracy.pmo.Catalog;
 import com.zerocracy.tk.RsPage;
 import java.io.IOException;
@@ -57,9 +57,7 @@ import org.xembly.Xembler;
 /**
  * Footprint page.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.12
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  * @checkstyle ExecutableStatementCountCheck (500 lines)
  */

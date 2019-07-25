@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,7 +20,10 @@ import com.zerocracy.Farm;
 import com.zerocracy.Par;
 import com.zerocracy.Project;
 import com.zerocracy.cash.Cash;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.claims.MsgPriority;
+import com.zerocracy.entry.ClaimsOf;
+import com.zerocracy.pmo.Pmo;
 import com.zerocracy.pmo.recharge.Stripe;
 import com.zerocracy.tk.RqUser;
 import com.zerocracy.tk.RsParFlash;
@@ -36,9 +39,7 @@ import org.takes.rq.form.RqFormSmart;
 /**
  * Pay page.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.19
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
@@ -93,15 +94,16 @@ public final class TkStripePay implements TkRegex {
             .param("stripe_customer", customer)
             .param("payment_id", pid)
             .param("email", email)
+            .param("priority", MsgPriority.HIGH)
             .author(user)
-            .postTo(project);
+            .postTo(new ClaimsOf(this.farm, project));
         new ClaimOut().type("Notify PMO").param(
             "message", new Par(
                 this.farm,
                 "Project %s was funded for %s by @%s;",
                 "customer ID is `%s`, payment ID is `%s`"
             ).say(project.pid(), amount, user, customer, pid)
-        ).postTo(this.farm);
+        ).postTo(new ClaimsOf(this.farm, new Pmo(this.farm)));
         return new RsForward(
             new RsParFlash(
                 new Par(
@@ -115,5 +117,4 @@ public final class TkStripePay implements TkRegex {
             String.format("/p/%s", project.pid())
         );
     }
-
 }

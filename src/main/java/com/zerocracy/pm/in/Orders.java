@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,6 +16,7 @@
  */
 package com.zerocracy.pm.in;
 
+import com.zerocracy.Farm;
 import com.zerocracy.Item;
 import com.zerocracy.Project;
 import com.zerocracy.SoftException;
@@ -24,6 +25,7 @@ import com.zerocracy.Xocument;
 import com.zerocracy.pm.cost.Boosts;
 import com.zerocracy.pm.scope.Wbs;
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -36,20 +38,22 @@ import org.cactoos.iterable.Mapped;
 import org.cactoos.list.SolidList;
 import org.cactoos.scalar.IoCheckedScalar;
 import org.cactoos.text.JoinedText;
-import org.cactoos.time.DateAsText;
 import org.cactoos.time.DateOf;
 import org.xembly.Directives;
 
 /**
  * Work orders.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.10
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
-@SuppressWarnings("PMD.TooManyMethods")
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.AvoidDuplicateLiterals"})
 public final class Orders {
+
+    /**
+     * Farm.
+     */
+    private final Farm farm;
 
     /**
      * Project.
@@ -58,9 +62,11 @@ public final class Orders {
 
     /**
      * Ctor.
+     * @param farm Farm
      * @param pkt Project
      */
-    public Orders(final Project pkt) {
+    public Orders(final Farm farm, final Project pkt) {
+        this.farm = farm;
         this.project = pkt;
     }
 
@@ -70,8 +76,8 @@ public final class Orders {
      * @throws IOException If fails
      */
     public Orders bootstrap() throws IOException {
-        try (final Item wbs = this.item()) {
-            new Xocument(wbs.path()).bootstrap("pm/in/orders");
+        try (final Item item = this.item()) {
+            new Xocument(item.path()).bootstrap("pm/in/orders");
         }
         return this;
     }
@@ -84,7 +90,21 @@ public final class Orders {
      * @throws IOException If fails
      */
     public void assign(final String job, final String login,
-        final long reason) throws IOException {
+        final String reason) throws IOException {
+        this.assign(job, login, reason, Instant.now());
+    }
+
+    /**
+     * Assign job to performer with custom start time.
+     * @param job The job to assign
+     * @param login The login of the user
+     * @param reason The reason of this order (ID of the claim)
+     * @param start Start time of assignment
+     * @throws IOException If fails
+     * @checkstyle ParameterNumber (3 lines)
+     */
+    public void assign(final String job, final String login,
+        final String reason, final Instant start) throws IOException {
         if (this.assigned(job)) {
             throw new SoftException(
                 String.format(
@@ -114,7 +134,7 @@ public final class Orders {
                         .strict(1)
                         .add("order")
                         .attr("job", job)
-                        .add("created").set(new DateAsText().asString()).up()
+                        .add("created").set(start.toString()).up()
                         .add("performer")
                         .set(login)
                         .up()
@@ -127,7 +147,7 @@ public final class Orders {
             if ("REV".equals(role)) {
                 factor = 1;
             }
-            new Boosts(this.project).bootstrap().boost(job, factor);
+            new Boosts(this.farm, this.project).bootstrap().boost(job, factor);
             txn.commit();
         }
     }
@@ -157,6 +177,22 @@ public final class Orders {
     }
 
     /**
+     * Remove order.
+     * @param job The order to remove
+     * @throws IOException If fails
+     */
+    public void remove(final String job) throws IOException {
+        try (final Item orders = this.item()) {
+            new Xocument(orders.path()).modify(
+                new Directives()
+                    .xpath(String.format("/orders/order[@job ='%s']", job))
+                    .strict(1)
+                    .remove()
+            );
+        }
+    }
+
+    /**
      * All jobs we have orders for.
      * @return List of jobs
      * @throws IOException If fails of it there is no assignee
@@ -176,8 +212,8 @@ public final class Orders {
      * @throws IOException If fails of it there is no assignee
      */
     public boolean assigned(final String job) throws IOException {
-        try (final Item wbs = this.item()) {
-            return !new Xocument(wbs.path()).nodes(
+        try (final Item item = this.item()) {
+            return !new Xocument(item.path()).nodes(
                 String.format("/orders/order[@job='%s']", job)
             ).isEmpty();
         }
@@ -197,8 +233,8 @@ public final class Orders {
                 )
             );
         }
-        try (final Item wbs = this.item()) {
-            return new Xocument(wbs.path()).xpath(
+        try (final Item item = this.item()) {
+            return new Xocument(item.path()).xpath(
                 String.format("/orders/order[@job='%s']/performer/text()", job)
             ).get(0);
         }

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -24,14 +24,15 @@ import com.zerocracy.Farm;
 import com.zerocracy.Item;
 import com.zerocracy.Project;
 import com.zerocracy.RunsInThreads;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.claims.ClaimsItem;
+import com.zerocracy.claims.Footprint;
 import com.zerocracy.farm.fake.FkFarm;
 import com.zerocracy.farm.fake.FkProject;
 import com.zerocracy.farm.props.PropsFarm;
 import com.zerocracy.farm.sync.SyncFarm;
-import com.zerocracy.pm.ClaimOut;
-import com.zerocracy.pm.Claims;
-import com.zerocracy.pm.Footprint;
 import com.zerocracy.pmo.Pmo;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
@@ -46,9 +47,7 @@ import org.xembly.Xembler;
 
 /**
  * Test case for {@link ExtMongo}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.18
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
@@ -87,12 +86,12 @@ public final class ExtMongoTest {
     public void createsMongo() throws Exception {
         final Farm farm = new PropsFarm(new FkFarm());
         final Project project = new Pmo(farm);
-        new ClaimOut().type("Hello").postTo(project);
-        final XML xml = new Claims(project).iterate().iterator().next();
+        new ClaimOut().type("Hello").postTo(new ClaimsOf(farm, project));
+        final XML xml = new ClaimsItem(project).iterate().iterator().next();
         final MongoClient mongo = new ExtMongo(farm).value();
         final String pid = "12MONGO89";
         try (final Footprint footprint = new Footprint(mongo, pid)) {
-            footprint.open(xml);
+            footprint.open(xml, "test");
             footprint.close(xml);
             MatcherAssert.assertThat(
                 footprint.collection().find(Filters.eq("project", pid)),
@@ -121,7 +120,7 @@ public final class ExtMongoTest {
                                 "<type>Hi there</type></claim>"
                             )
                         ).nodes("/claim").get(0);
-                        footprint.open(xml);
+                        footprint.open(xml, UUID.randomUUID().toString());
                         footprint.close(xml);
                         return footprint.collection()
                             .find(Filters.eq("project", pid))

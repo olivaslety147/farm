@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,19 +19,31 @@ package com.zerocracy.entry;
 import com.jcabi.aspects.Loggable;
 import com.jcabi.log.Logger;
 import com.zerocracy.Farm;
+import com.zerocracy.claims.ClaimGuts;
+import com.zerocracy.claims.ClaimsFarm;
+import com.zerocracy.claims.ClaimsRoutine;
+import com.zerocracy.claims.MessageSink;
 import com.zerocracy.farm.S3Farm;
 import com.zerocracy.farm.SmartFarm;
 import com.zerocracy.farm.props.Props;
+import com.zerocracy.farm.props.PropsFarm;
+import com.zerocracy.farm.sync.TestLocks;
 import com.zerocracy.radars.github.GithubRoutine;
 import com.zerocracy.radars.github.TkGithub;
+import com.zerocracy.radars.gitlab.TkGitlab;
 import com.zerocracy.radars.slack.SlackRadar;
 import com.zerocracy.radars.slack.TkSlack;
+import com.zerocracy.radars.viber.TkViber;
+import com.zerocracy.sentry.SafeSentry;
+import com.zerocracy.shutdown.ShutdownFarm;
 import com.zerocracy.tk.TkAlias;
 import com.zerocracy.tk.TkApp;
-import io.sentry.Sentry;
+import com.zerocracy.tk.TkSentry;
+import com.zerocracy.tk.TkZoldCallback;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import javax.ws.rs.HttpMethod;
 import org.cactoos.func.AsyncFunc;
 import org.takes.facets.fork.FkRegex;
 import org.takes.facets.fork.TkMethods;
@@ -40,11 +52,11 @@ import org.takes.http.FtCli;
 
 /**
  * Main entry point.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
+ * @checkstyle ClassFanOutComplexityCheck (500 lines)
  */
+@SuppressWarnings("PMD.ExcessiveImports")
 public final class Main {
 
     /**
@@ -75,12 +87,11 @@ public final class Main {
                 "Hey, we are in the testing mode!"
             );
         }
-        Sentry.init(props.get("//sentry/dsn", ""));
         final long start = System.currentTimeMillis();
         try {
             new Main(args).exec();
         } catch (final Throwable ex) {
-            Sentry.capture(ex);
+            new SafeSentry(new PropsFarm()).capture(ex);
             Logger.error(Main.class, "The main app crashed: %[exception]s", ex);
             throw new IOException(ex);
         } finally {
@@ -106,13 +117,26 @@ public final class Main {
             );
         }
         Logger.info(this, "Farm is ready to start");
+        final ShutdownFarm.Hook shutdown = new ShutdownFarm.Hook();
+        final ClaimGuts cgts = new ClaimGuts();
         try (
-            final Farm farm = new SmartFarm(
-                new S3Farm(new ExtBucket().value(), temp)
-            ).value();
-            final SlackRadar radar = new SlackRadar(farm)
+            final S3Farm origin = new S3Farm(new ExtBucket().value(), temp);
+            final Farm farm = new ShutdownFarm(
+                new ClaimsFarm(
+                    new SmartFarm(
+                        origin, new TestLocks()
+                    ),
+                    cgts
+                ),
+                shutdown
+            );
+            final SlackRadar radar = new SlackRadar(farm);
+            final ClaimsRoutine claims = new ClaimsRoutine(farm)
         ) {
             new ExtMongobee(farm).apply();
+            new MessageSink(farm, shutdown).start(claims.messages());
+            cgts.add(claims.messages());
+            claims.start(shutdown);
             new AsyncFunc<>(
                 input -> {
                     new ExtTelegram(farm).value();
@@ -128,16 +152,30 @@ public final class Main {
             new FtCli(
                 new TkApp(
                     farm,
-                    new FkRegex("/slack", new TkSlack(farm, radar)),
                     new FkRegex("/alias", new TkAlias(farm)),
+                    new FkRegex("/slack", new TkSlack(farm, radar)),
+                    new FkRegex("/viber", new TkViber(farm)),
                     new FkRegex(
                         "/ghook",
-                        new TkMethods(new TkGithub(farm), "POST")
+                        new TkMethods(
+                            new TkSentry(farm, new TkGithub(farm)),
+                            HttpMethod.POST
+                        )
+                    ),
+                    new FkRegex(
+                        "/glhook",
+                        new TkMethods(
+                            new TkSentry(farm, new TkGitlab()),
+                            HttpMethod.POST
+                        )
+                    ),
+                    new FkRegex(
+                        "/zcallback",
+                        new TkZoldCallback(farm)
                     )
                 ),
                 this.arguments
             ).start(Exit.NEVER);
         }
     }
-
 }

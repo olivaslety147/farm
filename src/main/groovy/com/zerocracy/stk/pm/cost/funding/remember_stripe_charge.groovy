@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,9 +21,16 @@ import com.zerocracy.Farm
 import com.zerocracy.Project
 import com.zerocracy.cash.Cash
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pmo.recharge.Recharge
 
+/**
+ * Stakeholder which saves Stripe customer account
+ * to be able to recharge the project automatically on deficit.
+ *
+ * @param project Funded project
+ * @param xml Claim
+ */
 def exec(Project project, XML xml) {
   new Assume(project, xml).notPmo()
   new Assume(project, xml).type('Funded by Stripe')
@@ -31,5 +38,5 @@ def exec(Project project, XML xml) {
   Cash amount = new Cash.S(claim.param('amount'))
   String customer = claim.param('stripe_customer')
   Farm farm = binding.variables.farm
-  new Recharge(farm, project.pid()).set('stripe', amount, customer)
+  new Recharge(farm, project).set('stripe', amount, customer)
 }

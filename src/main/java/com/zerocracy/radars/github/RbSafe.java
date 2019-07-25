@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,13 +19,14 @@ package com.zerocracy.radars.github;
 import com.jcabi.github.Github;
 import com.jcabi.github.Issue;
 import com.jcabi.github.mock.MkGithub;
+import com.jcabi.log.Logger;
 import com.zerocracy.Farm;
 import com.zerocracy.SoftException;
 import com.zerocracy.entry.ExtDynamo;
 import com.zerocracy.farm.Errors;
 import com.zerocracy.farm.props.Props;
+import com.zerocracy.sentry.SafeSentry;
 import com.zerocracy.tools.TxtUnrecoverableError;
-import io.sentry.Sentry;
 import java.io.IOException;
 import javax.json.JsonObject;
 import org.cactoos.func.FuncOf;
@@ -35,9 +36,7 @@ import org.cactoos.func.IoCheckedFunc;
 /**
  * Rebound that is safe.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.17
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
@@ -76,6 +75,19 @@ public final class RbSafe implements Rebound {
                 new FuncOf<>(
                     throwable -> {
                         final Issue issue = RbSafe.issue(github, event);
+                        Logger.error(
+                            this,
+                            "Issue: %s#%d, Action: `%s`, error: %[exception]s",
+                            issue.repo().coordinates(),
+                            issue.number(),
+                            event.getString("action"),
+                            throwable
+                        );
+                        new SafeSentry(farm).capture(
+                            new IllegalArgumentException(
+                                event.toString(), throwable
+                            )
+                        );
                         new Errors.Github(
                             new Errors(new ExtDynamo(farm).value()),
                             github
@@ -90,12 +102,6 @@ public final class RbSafe implements Rebound {
                                         event.getString("action")
                                     )
                                 ).asString()
-                            )
-                        );
-                        Sentry.capture(
-                            new IllegalArgumentException(
-                                event.toString(),
-                                throwable
                             )
                         );
                         throw new IOException(throwable);

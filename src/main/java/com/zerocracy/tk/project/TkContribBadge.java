@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -37,9 +37,7 @@ import org.takes.rs.RsWithType;
 /**
  * Project contrib badge.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.22
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class TkContribBadge implements TkRegex {
@@ -70,9 +68,10 @@ public final class TkContribBadge implements TkRegex {
                 String.format("/p/%s", project.pid())
             );
         }
-        final Cash left = new Ledger(project).bootstrap().cash().add(
-            new Estimates(project).bootstrap().total().mul(-1L)
-        );
+        final Cash left = new Ledger(this.farm, project)
+            .bootstrap().cash().add(
+                new Estimates(this.farm, project).bootstrap().total().mul(-1L)
+            );
         final String amount;
         if (left.equals(Cash.ZERO)) {
             amount = "no money";

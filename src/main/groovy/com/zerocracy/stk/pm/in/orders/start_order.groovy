@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -23,8 +23,9 @@ import com.zerocracy.Policy
 import com.zerocracy.Project
 import com.zerocracy.SoftException
 import com.zerocracy.cash.Cash
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.cost.Estimates
 import com.zerocracy.pm.in.Orders
 import com.zerocracy.pm.qa.Reviews
@@ -59,8 +60,7 @@ def exec(Project project, XML xml) {
       ).say(login)
     )
   }
-  Orders orders = new Orders(project).bootstrap()
-  orders.assign(job, login, claim.cid())
+  new Orders(farm, project).bootstrap().assign(job, login, claim.cid(), claim.created().toInstant())
   String role = new Wbs(project).bootstrap().role(job)
   String msg
   if (role == 'REV') {
@@ -101,19 +101,19 @@ def exec(Project project, XML xml) {
     ).say(login)
   }
   Cash cash = Cash.ZERO
-  Estimates estimates = new Estimates(project).bootstrap()
+  Estimates estimates = new Estimates(farm, project).bootstrap()
   if (estimates.exists(job)) {
     msg += new Par('; there will be a monetary reward for this job').say()
     cash = estimates.get(job)
   } else {
     msg += new Par('; there will be no monetary reward for this job').say()
   }
-  claim.reply(msg).postTo(project)
+  claim.reply(msg).postTo(new ClaimsOf(farm, project))
   claim.copy()
     .type('Order was given')
     .param('role', role)
     .param('login', login)
     .param('reason', claim.cid())
     .param('estimate', cash)
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
 }

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,7 +21,7 @@ import com.zerocracy.entry.ExtTelegram
 import com.zerocracy.farm.Assume
 import com.zerocracy.Farm
 import com.zerocracy.Project
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import org.cactoos.Proc
 import org.cactoos.func.RetryFunc
 import org.telegram.telegrambots.api.methods.send.SendMessage
@@ -46,6 +46,7 @@ def exec(Project project, XML xml) {
             .enableMarkdown(true)
             .setChatId(chat)
             .setText(claim.param('message'))
+            .disableWebPagePreview()
         )
       }
     }

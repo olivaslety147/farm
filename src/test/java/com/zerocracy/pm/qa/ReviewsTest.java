@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,10 +16,11 @@
  */
 package com.zerocracy.pm.qa;
 
+import com.jcabi.aspects.Tv;
 import com.jcabi.matchers.XhtmlMatchers;
 import com.zerocracy.cash.Cash;
+import com.zerocracy.claims.ClaimOut;
 import com.zerocracy.farm.fake.FkProject;
-import com.zerocracy.pm.ClaimOut;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Test;
@@ -27,9 +28,7 @@ import org.xembly.Xembler;
 
 /**
  * Test case for {@link Reviews}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.22
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  */
 public final class ReviewsTest {
@@ -42,7 +41,7 @@ public final class ReviewsTest {
             job, "yegor256", "dmarkov",
             new Cash.S("$10"), 1, new Cash.S("$15")
         );
-        final ClaimOut out = reviews.remove(job, true, new ClaimOut());
+        final ClaimOut out = reviews.remove(job, Tv.HUNDRED, new ClaimOut());
         MatcherAssert.assertThat(
             new Xembler(out).xmlQuietly(),
             XhtmlMatchers.hasXPaths(
@@ -82,6 +81,43 @@ public final class ReviewsTest {
         MatcherAssert.assertThat(
             reviews.requested(job),
             Matchers.not(Matchers.nullValue())
+        );
+    }
+
+    @Test
+    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+    public void fetchesReviewsOfInspector() throws Exception {
+        final Reviews reviews = new Reviews(new FkProject()).bootstrap();
+        final String[] jobs =
+            {"gh:yegor256/0pdd#200", "gh:yegor256/0pdd#201"};
+        final String inspector = "ypshenychka";
+        for (final String job : jobs) {
+            reviews.add(
+                job, inspector, "carlosmiranda",
+                new Cash.S("$111"), 1, new Cash.S("$24")
+            );
+        }
+        MatcherAssert.assertThat(
+            reviews.findByInspector(inspector),
+            Matchers.contains(jobs)
+        );
+    }
+
+    @Test
+    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+    public void fetchesAllReviews() throws Exception {
+        final Reviews reviews = new Reviews(new FkProject()).bootstrap();
+        final String[] jobs =
+            {"gh:zerocracy/farm#200", "gh:zerocracy/farm#201"};
+        for (final String job : jobs) {
+            reviews.add(
+                job, "amihaiemil", "g4s8",
+                new Cash.S("$112"), 1, new Cash.S("$25")
+            );
+        }
+        MatcherAssert.assertThat(
+            reviews.iterate(),
+            Matchers.contains(jobs)
         );
     }
 

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,19 +17,22 @@
 package com.zerocracy.stk.pmo.profile
 
 import com.jcabi.xml.XML
+import com.zerocracy.Farm
 import com.zerocracy.Par
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
 import com.zerocracy.Project
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 
 def exec(Project pmo, XML xml) {
   new Assume(pmo, xml).isPmo()
   new Assume(pmo, xml).type('Hello profile')
   ClaimIn claim = new ClaimIn(xml)
+  Farm farm = binding.variables.farm
   claim.reply(
     new Par(
       "Hey, what's up, how is it going?",
       'More information is in [your profile](/u/%s).'
     ).say(claim.author())
-  ).postTo(pmo)
+  ).postTo(new ClaimsOf(farm))
 }

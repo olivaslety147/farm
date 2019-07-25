@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,9 +21,10 @@ import com.jcabi.github.Issue
 import com.jcabi.xml.XML
 import com.zerocracy.Farm
 import com.zerocracy.Project
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.entry.ExtGithub
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.in.Orders
 import com.zerocracy.pmo.People
 import com.zerocracy.radars.github.Job
@@ -51,7 +52,7 @@ def exec(Project project, XML xml) {
   if (!people.hasMentor(login)) {
     return
   }
-  Orders orders = new Orders(project).bootstrap()
+  Orders orders = new Orders(farm, project).bootstrap()
   if (orders.assigned(job)) {
     return
   }
@@ -59,5 +60,5 @@ def exec(Project project, XML xml) {
     .type('Start order')
     .param('login', login)
     .param('reason', claim.cid())
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
 }

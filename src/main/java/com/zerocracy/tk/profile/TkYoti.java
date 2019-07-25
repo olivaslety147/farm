@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -22,8 +22,9 @@ import com.yoti.api.client.ProfileException;
 import com.yoti.api.client.YotiClientBuilder;
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.farm.props.Props;
-import com.zerocracy.pm.ClaimOut;
 import com.zerocracy.pmo.People;
 import com.zerocracy.tk.RqUser;
 import com.zerocracy.tk.RsParFlash;
@@ -42,9 +43,7 @@ import org.takes.rq.RqHref;
 /**
  * Yoti callback page.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.20
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class TkYoti implements TkRegex {
@@ -82,11 +81,11 @@ public final class TkYoti implements TkRegex {
             throw new IOException(ex);
         }
         final String name = String.format(
-            "%s %s %d-%d-%d @Yoti",
-            profile.getGivenNames(), profile.getFamilyName(),
-            profile.getDateOfBirth().getDay(),
-            profile.getDateOfBirth().getMonth(),
-            profile.getDateOfBirth().getYear()
+            "%s %d-%d-%d @Yoti",
+            profile.getFullName().getValue(),
+            profile.getDateOfBirth().getValue().getDay(),
+            profile.getDateOfBirth().getValue().getMonth(),
+            profile.getDateOfBirth().getValue().getYear()
         );
         final String user = new RqUser(this.farm, req).value();
         new People(this.farm).bootstrap().details(user, name);
@@ -95,12 +94,12 @@ public final class TkYoti implements TkRegex {
             .param("login", user)
             .param("details", name)
             .param("system", "yoti")
-            .postTo(this.farm);
+            .postTo(new ClaimsOf(this.farm));
         new ClaimOut().type("Notify PMO").param(
             "message", new Par(
                 "We just identified @%s as \"%s\" via Yoti"
             ).say(user, name)
-        ).postTo(this.farm);
+        ).postTo(new ClaimsOf(this.farm));
         return new RsForward(
             new RsParFlash(
                 new Par(
@@ -111,5 +110,4 @@ public final class TkYoti implements TkRegex {
             String.format("/u/%s", user)
         );
     }
-
 }

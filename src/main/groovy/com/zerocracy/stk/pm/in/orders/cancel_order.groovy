@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -17,11 +17,13 @@
 package com.zerocracy.stk.pm.in.orders
 
 import com.jcabi.xml.XML
+import com.zerocracy.Farm
 import com.zerocracy.Par
 import com.zerocracy.Project
 import com.zerocracy.SoftException
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.in.Orders
 import com.zerocracy.pm.staff.Roles
 
@@ -30,7 +32,7 @@ def exec(Project project, XML xml) {
   new Assume(project, xml).type('Cancel order')
   ClaimIn claim = new ClaimIn(xml)
   String job = claim.param('job')
-  Orders orders = new Orders(project).bootstrap()
+  Orders orders = new Orders(farm, project).bootstrap()
   String performer = orders.performer(job)
   Roles roles = new Roles(project).bootstrap()
   if (claim.hasAuthor() && !roles.hasRole(claim.author(), 'PO', 'ARC')
@@ -43,6 +45,7 @@ def exec(Project project, XML xml) {
     )
   }
   orders.resign(job)
+  Farm farm = binding.variables.farm
   String reason
   if (claim.hasParam('reason')) {
     reason = claim.param('reason')
@@ -53,10 +56,10 @@ def exec(Project project, XML xml) {
     new Par(
       'The user @%s resigned from %s, please stop working. Reason for job resignation: %s',
     ).say(performer, job, reason)
-  ).postTo(project)
+  ).postTo(new ClaimsOf(farm, project))
   claim.copy()
     .type('Order was canceled')
     .param('voluntarily', claim.hasAuthor() && claim.author() == performer)
     .param('login', performer)
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
 }

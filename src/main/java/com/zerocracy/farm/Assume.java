@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,7 +20,7 @@ import com.jcabi.xml.XML;
 import com.zerocracy.Par;
 import com.zerocracy.Project;
 import com.zerocracy.SoftException;
-import com.zerocracy.pm.ClaimIn;
+import com.zerocracy.claims.ClaimIn;
 import com.zerocracy.pm.staff.Roles;
 import java.io.IOException;
 import java.util.Collection;
@@ -33,9 +33,7 @@ import org.cactoos.iterable.IterableOf;
 /**
  * Assumptions for stakeholder.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.11
+ * @since 1.0
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
 public final class Assume {
@@ -62,30 +60,49 @@ public final class Assume {
 
     /**
      * It's not a PMO.
+     * @return Self
      * @throws IOException If this is PMO
      */
-    public void notPmo() throws IOException {
+    public Assume notPmo() throws IOException {
         if ("PMO".equals(this.project.pid())) {
             throw new MismatchException("This is PMO");
         }
+        return this;
+    }
+
+    /**
+     * It's Github job.
+     * @return Self
+     * @throws IOException If not Github job
+     */
+    public Assume github() throws IOException {
+        if (!new ClaimIn(this.xml).param("job", "")
+            .toLowerCase(Locale.US)
+            .startsWith("gh:")) {
+            throw new MismatchException("Not Github job");
+        }
+        return this;
     }
 
     /**
      * It's a PMO.
+     * @return Self
      * @throws IOException If this is PMO
      */
-    public void isPmo() throws IOException {
+    public Assume isPmo() throws IOException {
         if (!"PMO".equals(this.project.pid())) {
             throw new MismatchException("This is not PMO");
         }
+        return this;
     }
 
     /**
      * Equals.
      * @param types The types to accept
+     * @return Self
      * @throws MismatchException If doesn't match
      */
-    public void type(final String... types) throws MismatchException {
+    public Assume type(final String... types) throws MismatchException {
         final String input = new ClaimIn(this.xml)
             .type().toLowerCase(Locale.ENGLISH);
         final Set<String> expected = new HashSet<>(
@@ -102,6 +119,7 @@ public final class Assume {
                 )
             );
         }
+        return this;
     }
 
     /**
@@ -174,5 +192,4 @@ public final class Assume {
         }
         return has;
     }
-
 }

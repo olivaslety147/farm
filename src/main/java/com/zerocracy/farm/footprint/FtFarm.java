@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,6 +18,7 @@ package com.zerocracy.farm.footprint;
 
 import com.zerocracy.Farm;
 import com.zerocracy.Project;
+import com.zerocracy.claims.Footprint;
 import java.io.IOException;
 import lombok.EqualsAndHashCode;
 import org.cactoos.iterable.Mapped;
@@ -25,11 +26,9 @@ import org.cactoos.iterable.Mapped;
 /**
  * Footprint farm.
  *
- * <p>All claims are tracked through {@link com.zerocracy.pm.Footprint}.</p>
+ * <p>All claims are tracked through {@link Footprint}.</p>
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.18
+ * @since 1.0
  */
 @EqualsAndHashCode(of = "origin")
 public final class FtFarm implements Farm {

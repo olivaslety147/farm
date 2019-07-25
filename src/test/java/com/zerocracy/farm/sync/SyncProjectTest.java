@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -20,7 +20,7 @@ import com.jcabi.aspects.Tv;
 import com.zerocracy.Farm;
 import com.zerocracy.Item;
 import com.zerocracy.Project;
-import com.zerocracy.farm.fake.FkFarm;
+import com.zerocracy.farm.props.PropsFarm;
 import com.zerocracy.pmo.Pmo;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -30,16 +30,14 @@ import org.junit.Test;
 
 /**
  * Test case for {@link SyncProject}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.10
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  */
 public final class SyncProjectTest {
 
     @Test
     public void locksFilesIndividually() throws Exception {
-        try (final Farm farm = new SyncFarm(new FkFarm())) {
+        try (final Farm farm = new SyncFarm(new PropsFarm())) {
             final Project project = new Pmo(farm);
             final Collection<Item> items = new LinkedList<>();
             for (int idx = 0; idx < Tv.FIFTY; ++idx) {
@@ -56,5 +54,4 @@ public final class SyncProjectTest {
             );
         }
     }
-
 }

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -25,9 +25,7 @@ import lombok.EqualsAndHashCode;
 /**
  * Synchronized and thread safe item.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  */
 @EqualsAndHashCode(of = "origin")
 final class SyncItem implements Item {
@@ -74,10 +72,11 @@ final class SyncItem implements Item {
     @Override
     public void close() throws IOException {
         try {
-            this.origin.close();
+            if (!Thread.currentThread().isInterrupted()) {
+                this.origin.close();
+            }
         } finally {
             this.lock.unlock();
         }
     }
-
 }

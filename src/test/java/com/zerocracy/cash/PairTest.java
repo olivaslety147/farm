@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -25,9 +25,7 @@ import org.mockito.Mockito;
 
 /**
  * Test case for {@link Pair}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.6
+ * @since 1.0
  * @checkstyle MagicNumber (500 lines)
  */
 public final class PairTest {

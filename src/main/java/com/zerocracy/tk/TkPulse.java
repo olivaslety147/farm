@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,7 +18,7 @@ package com.zerocracy.tk;
 
 import com.mongodb.client.model.Filters;
 import com.zerocracy.Farm;
-import com.zerocracy.pm.Footprint;
+import com.zerocracy.claims.Footprint;
 import com.zerocracy.pmo.Pmo;
 import java.io.IOException;
 import java.time.ZonedDateTime;
@@ -34,9 +34,7 @@ import org.takes.rs.RsJson;
 /**
  * Pulse.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.22
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 final class TkPulse implements Take {
@@ -70,11 +68,11 @@ final class TkPulse implements Take {
                 Json.createObjectBuilder()
                     .add(
                         "total",
-                        footprint.collection().count(since)
+                        footprint.collection().countDocuments(since)
                     )
                     .add(
                         "errors",
-                        footprint.collection().count(
+                        footprint.collection().countDocuments(
                             Filters.and(since, Filters.eq("type", "Error"))
                         )
                     )

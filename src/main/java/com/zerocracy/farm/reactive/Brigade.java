@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -30,11 +30,9 @@ import org.cactoos.list.SolidList;
 
 /**
  * Brigade of stakeholders.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.10
+ * @since 1.0
  */
-final class Brigade implements BiFunc<Project, XML, Integer> {
+public final class Brigade implements BiFunc<Project, XML, Integer> {
 
     /**
      * Stakeholders.
@@ -45,7 +43,7 @@ final class Brigade implements BiFunc<Project, XML, Integer> {
      * Ctor.
      * @param list List of stakeholders
      */
-    Brigade(final Stakeholder... list) {
+    public Brigade(final Stakeholder... list) {
         this(new IterableOf<>(list));
     }
 
@@ -53,7 +51,7 @@ final class Brigade implements BiFunc<Project, XML, Integer> {
      * Ctor.
      * @param list List of stakeholders
      */
-    Brigade(final Iterable<Stakeholder> list) {
+    public Brigade(final Iterable<Stakeholder> list) {
         this.pool = new SolidList<>(new Mapped<>(StkSmart::new, list));
     }
 

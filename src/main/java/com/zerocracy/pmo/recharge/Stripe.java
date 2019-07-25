@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -16,29 +16,37 @@
  */
 package com.zerocracy.pmo.recharge;
 
+import com.jcabi.aspects.Tv;
 import com.stripe.exception.APIConnectionException;
 import com.stripe.exception.APIException;
 import com.stripe.exception.AuthenticationException;
 import com.stripe.exception.CardException;
 import com.stripe.exception.InvalidRequestException;
+import com.stripe.model.BalanceTransaction;
+import com.stripe.model.BalanceTransactionCollection;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.net.RequestOptions;
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
 import com.zerocracy.cash.Cash;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.farm.props.Props;
-import com.zerocracy.pm.ClaimOut;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Collections;
 import org.cactoos.map.MapEntry;
+import org.cactoos.map.MapOf;
 import org.cactoos.map.SolidMap;
 
 /**
  * Stripe payment.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.19
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
@@ -74,6 +82,50 @@ public final class Stripe {
     }
 
     /**
+     * Daily revenue of stripe.
+     * @param currency Currency
+     * @return Amount decimal
+     * @throws IOException If fails
+     */
+    public BigDecimal dailyRevenue(final String currency) throws IOException {
+        try {
+            final BalanceTransactionCollection txns = BalanceTransaction.list(
+                new MapOf<String, Object>(
+                    new MapEntry<>(
+                        "created",
+                        Collections.singletonMap(
+                            "gte",
+                            Long.toString(
+                                Instant.now()
+                                    .minus(Duration.ofDays(1L))
+                                    .getEpochSecond()
+                            )
+                        )
+                    ),
+                    new MapEntry<>(
+                        "limit", Tv.HUNDRED
+                    )
+                ),
+                this.options()
+            );
+            long cents = 0L;
+            for (final BalanceTransaction txn : txns.autoPagingIterable()) {
+                if (currency.equalsIgnoreCase(txn.getCurrency())) {
+                    cents += txn.getAmount();
+                }
+            }
+            return BigDecimal.valueOf(cents)
+                .divide(
+                    BigDecimal.valueOf((long) Tv.HUNDRED),
+                    2, RoundingMode.UNNECESSARY
+                );
+        } catch (final APIException | APIConnectionException | CardException
+            | AuthenticationException | InvalidRequestException ex) {
+            throw new Stripe.PaymentException(ex);
+        }
+    }
+
+    /**
      * Register a customer.
      * @param token Token from HTML front
      * @param email Email of the customer
@@ -100,7 +152,7 @@ public final class Stripe {
             "message", new Par(
                 "Stripe customer `%s` registered as %s"
             ).say(cid, email)
-        ).postTo(this.farm);
+        ).postTo(new ClaimsOf(this.farm));
         return cid;
     }
 
@@ -139,7 +191,7 @@ public final class Stripe {
             "message", new Par(
                 "Stripe customer `%s` charged %s for \"%s\": `%s`"
             ).say(customer, amount, details, pid)
-        ).postTo(this.farm);
+        ).postTo(new ClaimsOf(this.farm));
         return pid;
     }
 
@@ -158,10 +210,12 @@ public final class Stripe {
      * Failure.
      */
     public static final class PaymentException extends IOException {
+
         /**
          * Serialization marker.
          */
         private static final long serialVersionUID = 9204303106888716333L;
+
         /**
          * Ctor.
          * @param cause The cause
@@ -170,5 +224,4 @@ public final class Stripe {
             super(cause);
         }
     }
-
 }

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,7 +18,8 @@ package com.zerocracy.tk;
 
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.pm.staff.Roles;
 import com.zerocracy.pmo.Pmo;
 import java.io.IOException;
@@ -33,9 +34,7 @@ import org.takes.rq.form.RqFormSmart;
 /**
  * Send spam to all users.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.19
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
@@ -69,12 +68,12 @@ public final class TkSpam implements TkRegex {
         final String body = form.single("body");
         new ClaimOut().type("Notify all").param(
             "message", new Par(body).say()
-        ).postTo(this.farm);
+        ).postTo(new ClaimsOf(this.farm));
         new ClaimOut().type("Notify PMO").param(
             "message", new Par(
                 "Spam request has been submitted by @%s"
             ).say(user)
-        ).postTo(this.farm);
+        ).postTo(new ClaimsOf(this.farm));
         return new RsForward(
             new RsParFlash(
                 new Par(

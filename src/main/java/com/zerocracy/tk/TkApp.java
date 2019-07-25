@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -21,11 +21,14 @@ import com.zerocracy.Farm;
 import com.zerocracy.farm.guts.TkGuts;
 import com.zerocracy.farm.props.Props;
 import com.zerocracy.pmo.Exam;
+import com.zerocracy.sentry.SafeSentry;
 import com.zerocracy.tk.profile.TkAgenda;
 import com.zerocracy.tk.profile.TkAwards;
 import com.zerocracy.tk.profile.TkIdentify;
 import com.zerocracy.tk.profile.TkKyc;
 import com.zerocracy.tk.profile.TkProfile;
+import com.zerocracy.tk.profile.TkResumes;
+import com.zerocracy.tk.profile.TkUserWbs;
 import com.zerocracy.tk.profile.TkYoti;
 import com.zerocracy.tk.project.RqProject;
 import com.zerocracy.tk.project.TkArchive;
@@ -40,6 +43,7 @@ import com.zerocracy.tk.project.TkDonate;
 import com.zerocracy.tk.project.TkEquity;
 import com.zerocracy.tk.project.TkFiles;
 import com.zerocracy.tk.project.TkFootprint;
+import com.zerocracy.tk.project.TkFundZold;
 import com.zerocracy.tk.project.TkHiring;
 import com.zerocracy.tk.project.TkProject;
 import com.zerocracy.tk.project.TkReport;
@@ -50,7 +54,6 @@ import com.zerocracy.tk.rfp.TkPrepay;
 import com.zerocracy.tk.rfp.TkRfp;
 import com.zerocracy.tk.rfp.TkRfps;
 import com.zerocracy.tk.rfp.TkSubmit;
-import io.sentry.Sentry;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import org.apache.commons.text.StringEscapeUtils;
@@ -92,9 +95,7 @@ import org.takes.tk.TkWrap;
 /**
  * Takes application.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  * @checkstyle LineLength (500 lines)
  * @checkstyle ClassFanOutComplexityCheck (500 lines)
@@ -154,7 +155,7 @@ public final class TkApp extends TkWrap {
                                                                     new FkRegex("/identify", new TkIdentify(farm)),
                                                                     new FkRegex("/privacy", new TkRedirect("http://www.zerocracy.com/terms.html#privacy")),
                                                                     new FkRegex("/yoti", new TkYoti(farm)),
-                                                                    new FkRegex("/heapdump", new TkDump(farm)),
+                                                                    new FkRegex("/heapdump", new TkDump()),
                                                                     new FkRegex("/guts", new TkGuts(farm)),
                                                                     new FkRegex(
                                                                         "/spam",
@@ -165,14 +166,8 @@ public final class TkApp extends TkWrap {
                                                                     new FkRegex("/spam-send", new TkSpam(farm)),
                                                                     new FkRegex("/shutdown", new TkShutdown(props, farm)),
                                                                     new FkRegex("/policy", new TkPolicy()),
-                                                                    new FkRegex(
-                                                                        "/join",
-                                                                        (Take) req -> {
-                                                                            new RqUser(farm, req, false).value();
-                                                                            return new RsPage(farm, "/xsl/join.xsl", req);
-                                                                        }
-                                                                    ),
-                                                                    new FkRegex("/join-post", new TkJoin(farm)),
+                                                                    new FkRegex("/join", new TkJoin(farm)),
+                                                                    new FkRegex("/join-post", new TkJoinPost(farm)),
                                                                     new FkRegex(
                                                                         "/org/takes/.+\\.xsl",
                                                                         new TkClasspath()
@@ -223,13 +218,14 @@ public final class TkApp extends TkWrap {
                                                                     new FkRegex("/team", new TkTeam(farm)),
                                                                     new FkRegex("/gang", new TkRedirect("/team")),
                                                                     new FkRegex("/me", new TkRedirect("/home")),
-                                                                    new FkRegex(
-                                                                        "/badge/([A-Z0-9]{9})\\.svg",
-                                                                        new TkBadge(farm)
-                                                                    ),
+                                                                    new FkRegex("/vacancies", new TkVacancies(farm)),
                                                                     new FkRegex(
                                                                         "/p/(PMO|[A-Z0-9]{9})",
                                                                         new TkProject(farm)
+                                                                    ),
+                                                                    new FkRegex(
+                                                                        "/p/(PMO|[A-Z0-9]{9})/zold",
+                                                                        new TkFundZold(farm)
                                                                     ),
                                                                     new FkRegex(
                                                                         "/hiring/([A-Z0-9]{9})",
@@ -245,6 +241,14 @@ public final class TkApp extends TkWrap {
                                                                         }
                                                                     ),
                                                                     new FkRegex(
+                                                                        "/badge/([A-Z0-9]{9})\\.svg",
+                                                                        new TkBadge(farm)
+                                                                    ),
+                                                                    new FkRegex(
+                                                                        "/contrib-badge/([A-Z0-9]{9})\\.svg",
+                                                                        new TkContribBadge(farm)
+                                                                    ),
+                                                                    new FkRegex(
                                                                         "/hiring-send/([A-Z0-9]{9})",
                                                                         new TkHiring(farm)
                                                                     ),
@@ -257,10 +261,6 @@ public final class TkApp extends TkWrap {
                                                                         new TkContribPay(farm)
                                                                     ),
                                                                     new FkRegex(
-                                                                        "/contrib-badge/([A-Z0-9]{9})\\.svg",
-                                                                        new TkContribBadge(farm)
-                                                                    ),
-                                                                    new FkRegex(
                                                                         "/contrib-ledger/([A-Z0-9]{9})",
                                                                         new TkContribLedger(farm)
                                                                     ),
@@ -269,7 +269,7 @@ public final class TkApp extends TkWrap {
                                                                         new TkFootprint(farm)
                                                                     ),
                                                                     new FkRegex(
-                                                                        "/footprint/(PMO|[A-Z0-9]{9})/([0-9]+)",
+                                                                        "/footprint/(PMO|[A-Z0-9]{9})/([a-fA-F0-9\\-]+)",
                                                                         new TkClaim(farm)
                                                                     ),
                                                                     new FkRegex(
@@ -321,8 +321,26 @@ public final class TkApp extends TkWrap {
                                                                         new TkAgenda(farm)
                                                                     ),
                                                                     new FkRegex(
+                                                                        "/u/([a-zA-Z0-9-]+)/wbs",
+                                                                        new TkUserWbs(farm)
+                                                                    ),
+                                                                    new FkRegex(
+                                                                        "/u/([a-zA-Z0-9-]+)/resumes",
+                                                                        new TkResumes(farm)
+                                                                    ),
+                                                                    new FkRegex(
+                                                                        "/resumes",
+                                                                        (TkRegex) req -> new RsRedirect(
+                                                                            String.format("/u/%s/resumes", new RqUser(farm, req, false).value())
+                                                                        )
+                                                                    ),
+                                                                    new FkRegex(
                                                                         "/u/([a-zA-Z0-9-]+)",
                                                                         new TkProfile(farm)
+                                                                    ),
+                                                                    new FkRegex(
+                                                                        "/known/(?<login>[a-zA-Z0-9-]+)",
+                                                                        new TkKnown(farm)
                                                                     )
                                                                 )
                                                             )
@@ -360,7 +378,7 @@ public final class TkApp extends TkWrap {
                         },
                         new FbLog4j(),
                         req -> {
-                            Sentry.capture(req.throwable());
+                            new SafeSentry(farm).capture(req.throwable());
                             return new Opt.Empty<>();
                         },
                         req -> new Opt.Single<>(
@@ -397,5 +415,4 @@ public final class TkApp extends TkWrap {
             )
         );
     }
-
 }

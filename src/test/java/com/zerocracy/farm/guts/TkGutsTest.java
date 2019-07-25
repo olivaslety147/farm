@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -32,9 +32,7 @@ import org.takes.rs.RsPrint;
 
 /**
  * Test case for {@link TkGuts}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.19
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
@@ -44,13 +42,13 @@ public final class TkGutsTest {
     public void rendersXml() throws Exception {
         final Farm raw = new FkFarm();
         new Roles(new Pmo(raw)).bootstrap().assign("yegor256", "PO");
-        try (final Farm farm = new SmartFarm(raw).value()) {
+        try (final Farm farm = new SmartFarm(raw)) {
             final Take take = new TkApp(farm);
             MatcherAssert.assertThat(
                 XhtmlMatchers.xhtml(
                     new RsPrint(
                         take.act(
-                            new RqWithUser(
+                            new RqWithUser.WithInit(
                                 farm, new RqFake("GET", "/guts")
                             )
                         )

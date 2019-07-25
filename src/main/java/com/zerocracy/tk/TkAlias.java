@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -18,7 +18,8 @@ package com.zerocracy.tk;
 
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.pmo.People;
 import com.zerocracy.pmo.Pmo;
 import java.io.IOException;
@@ -32,9 +33,7 @@ import org.takes.rq.RqHref;
 /**
  * Add user alias.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.1
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class TkAlias implements Take {
@@ -74,7 +73,7 @@ public final class TkAlias implements Take {
             "message", new Par(
                 "We just linked @%s via %s as \"%s\""
             ).say(login, rel, href)
-        ).postTo(pmo);
+        ).postTo(new ClaimsOf(this.farm));
         return new RsForward(
             new RsParFlash(
                 new Par(

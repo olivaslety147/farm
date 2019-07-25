@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -22,23 +22,22 @@ import com.mongodb.client.model.Filters;
 import com.zerocracy.Farm;
 import com.zerocracy.Project;
 import com.zerocracy.RunsInThreads;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.claims.Footprint;
+import com.zerocracy.entry.ClaimsOf;
 import com.zerocracy.farm.S3Farm;
 import com.zerocracy.farm.props.PropsFarm;
 import com.zerocracy.farm.sync.SyncFarm;
-import com.zerocracy.pm.ClaimOut;
-import com.zerocracy.pm.Footprint;
 import java.nio.file.Files;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 
 /**
  * Test case for {@link FtFarm}.
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.18
+ * @since 1.0
  * @checkstyle JavadocMethodCheck (500 lines)
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  * @checkstyle ExecutableStatementCountCheck (500 lines)
@@ -58,16 +57,15 @@ public final class FtFarmTest {
             final Project project = farm.find(
                 String.format("@id='%s'", pid)
             ).iterator().next();
-            final AtomicLong cid = new AtomicLong(1L);
             final int threads = 10;
             MatcherAssert.assertThat(
                 inc -> {
-                    final long num = cid.getAndIncrement();
-                    new ClaimOut().cid(num)
+                    final String cid = UUID.randomUUID().toString();
+                    new ClaimOut().cid(cid)
                         .type("Hello")
-                        .param("something", num)
+                        .param("something", cid)
                         .author("0pdd")
-                        .postTo(project);
+                        .postTo(new ClaimsOf(farm, project));
                     return true;
                 },
                 new RunsInThreads<>(new AtomicInteger(), threads)

@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -29,9 +29,7 @@ import org.cactoos.Proc;
 /**
  * On GitHub invitations.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.2
+ * @since 1.0
  */
 public final class AcceptInvitations implements Proc<Boolean> {
 
@@ -50,7 +48,12 @@ public final class AcceptInvitations implements Proc<Boolean> {
 
     @Override
     public void exec(final Boolean input) throws IOException {
-        if (new Quota(this.github).over()) {
+        if (
+            new Quota(this.github).over(
+                // @checkstyle LineLength (1 line)
+                () -> "GitHub API is over quota. Cancelling AcceptInvitations execution."
+            )
+        ) {
             return;
         }
         final Request entry = this.github.entry().reset("Accept").header(

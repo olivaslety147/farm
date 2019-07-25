@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -19,8 +19,9 @@ package com.zerocracy.stk.pmo.agenda
 import com.jcabi.xml.XML
 import com.zerocracy.Farm
 import com.zerocracy.Project
+import com.zerocracy.entry.ClaimsOf
 import com.zerocracy.farm.Assume
-import com.zerocracy.pm.ClaimIn
+import com.zerocracy.claims.ClaimIn
 import com.zerocracy.pm.in.Impediments
 import com.zerocracy.pm.in.Orders
 import com.zerocracy.pmo.Agenda
@@ -30,16 +31,16 @@ def exec(Project project, XML xml) {
   new Assume(project, xml).type('Impediment was registered')
   ClaimIn claim = new ClaimIn(xml)
   String job = claim.param('job')
-  Orders orders = new Orders(project).bootstrap()
+  Orders orders = new Orders(farm, project).bootstrap()
   String owner = orders.performer(job)
   Farm farm = binding.variables.farm
   Agenda agenda = new Agenda(farm, owner).bootstrap()
-  Impediments impediments = new Impediments(project).bootstrap()
+  Impediments impediments = new Impediments(farm, project).bootstrap()
   if (impediments.exists(job)) {
     agenda.impediment(job, 'on hold')
   }
   claim.copy()
     .type('Agenda was updated')
     .param('login', owner)
-    .postTo(project)
+    .postTo(new ClaimsOf(farm, project))
 }

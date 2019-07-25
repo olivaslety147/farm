@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2016-2018 Zerocracy
+/*
+ * Copyright (c) 2016-2019 Zerocracy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to read
@@ -23,20 +23,19 @@ import com.jcabi.github.Label;
 import com.zerocracy.Farm;
 import com.zerocracy.Par;
 import com.zerocracy.Project;
-import com.zerocracy.pm.ClaimOut;
+import com.zerocracy.claims.ClaimOut;
+import com.zerocracy.entry.ClaimsOf;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 import javax.json.JsonObject;
 
 /**
  * Issue close-event reaction. Remove it from WBS.
  *
- * @author Yegor Bugayenko (yegor256@gmail.com)
- * @version $Id$
- * @since 0.7
+ * @since 1.0
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
@@ -66,13 +65,13 @@ public final class RbOnClose implements Rebound {
                         "GitHub issue was closed as 'invalid' by @%s"
                     ).say(author)
                 )
-                .postTo(project);
+                .postTo(new ClaimsOf(farm, project));
             new ClaimOut()
                 .type("Remove job from WBS")
                 .token(new TokenOfIssue(issue))
                 .author(author)
                 .param("job", job)
-                .postTo(project);
+                .postTo(new ClaimsOf(farm, project));
             answer = "It's invalid";
         } else {
             new ClaimOut()
@@ -80,9 +79,9 @@ public final class RbOnClose implements Rebound {
                 .token(new TokenOfIssue(issue))
                 .author(author)
                 .param("job", job)
-                .until(TimeUnit.MINUTES.toSeconds((long) Tv.FIFTEEN))
+                .until(Duration.ofMinutes((long) Tv.FIFTEEN))
                 .param("reason", "GitHub issue was closed")
-                .postTo(project);
+                .postTo(new ClaimsOf(farm, project));
             answer = "Asked WBS to take it out of scope";
         }
         return answer;
